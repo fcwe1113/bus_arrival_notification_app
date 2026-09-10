@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-void main() {
+void main() { // app entry point
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  static const mapsApiKey = String.fromEnvironment('MAPS_API_KEY'); // todo move this line to where the map actually lives
 
   // This widget is the root of your application.
   @override
@@ -30,7 +32,8 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      // home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MapScreen(),
     );
   }
 }
@@ -51,6 +54,38 @@ class MyHomePage extends StatefulWidget {
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
+
+  @override
+  State<MapScreen> createState() => _MapScreenState();
+}
+
+class _MapScreenState extends State<MapScreen> {
+  GoogleMapController? _mapController;
+
+  // initial position of the map on load, currently on london, replace with user settings later
+  static const _initialPosition = CameraPosition(target: LatLng(51.5072, -0.1276), zoom: 13);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Bus Tracker")),
+      body: GoogleMap(
+        initialCameraPosition: _initialPosition,
+        onMapCreated: (controller) => _mapController = controller,
+        myLocationEnabled: true, // enables phone location services
+        markers: {
+          Marker(
+            markerId: MarkerId("bus_1"),
+            position: LatLng(51.5072, -0.1276),
+          ),
+        },
+      ),
+    );
+  }
 }
 
 class _MyHomePageState extends State<MyHomePage> {
