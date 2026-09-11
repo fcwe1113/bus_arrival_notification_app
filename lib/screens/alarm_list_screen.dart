@@ -24,7 +24,10 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
 
   void _loadAlarms() { // todo
     // idk read from the alarm list json or something
-    throw UnimplementedError();
+    // for now we make a dummy alarm for testing purposes
+    // throw UnimplementedError();
+
+    _alarms = [BusAlarm(id: "00001", routeName: "41", stopId: "1234", enabled: false, nextArrival: 12)];
   }
 
   void _toggleAlarm(int index) {
@@ -35,14 +38,13 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
   
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return AppShell(title: "Alarm List", body: ListView.builder(
         itemCount: _alarms.length,
         itemBuilder: (context, index) {
       final alarm = _alarms[index];
       return SwitchListTile(
         title: Text(alarm.routeName),
-        subtitle: Text(alarm.nextArrival),
+        subtitle: Text("${alarm.nextArrival} minutes"),
         value: alarm.enabled,
         onChanged: (_) => _toggleAlarm(index),
       );

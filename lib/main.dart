@@ -1,3 +1,4 @@
+import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -31,8 +32,15 @@ class MyApp extends StatelessWidget { // statelesswidget only has constant inter
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
+      initialRoute: "/",
+      routes: {
+        "/": (context) => const AlarmListScreen(),
+        "/map": (context) => const MapScreen(),
+        // add more routes here as we add more screens
+      },
       // home: const MyHomePage(title: 'Flutter Demo Home Page'),
-      home: MapScreen(),
+      // home: MapScreen(),
+      // home: AlarmListScreen(),
     );
   }
 }

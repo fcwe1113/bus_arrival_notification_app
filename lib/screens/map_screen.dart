@@ -34,7 +34,7 @@ class _MapScreenState extends State<MapScreen> {
     // if real time updates needed try StreamBuilder
 
     return AppShell(
-      title: "Bus Tracker",
+      title: "Map",
       body: GoogleMap(
         initialCameraPosition: _initialPosition,
         onMapCreated: (controller) => _mapController = controller,

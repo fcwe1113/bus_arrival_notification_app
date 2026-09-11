@@ -1,11 +1,11 @@
 class BusAlarm {
-  final String id;
-  final String routeName;
-  final String stopId;
-  final bool enabled;
-  final String nextArrival;
+  final String id; // maybe gen a uuid for it or something, this is local anyways so whatever
+  final String routeName; // linked to the future all routes database with prepended loc code?
+  final String stopId; // same as above
+  final bool enabled; // maybe set this to true when its supposed to yell at you?
+  final int nextArrival; // maybe hook this up to a periodic updater?
 
-  const BusAlarm({
+  const BusAlarm({ //  constructor
     required this.id,
     required this.routeName,
     required this.stopId,
@@ -13,12 +13,12 @@ class BusAlarm {
     required this.nextArrival
   });
 
-  BusAlarm copyWith({
+  BusAlarm copyWith({ // object copy function, required because dart does not hv a update immutable object default so we r implementing one here
     String? id,
     String? routeName,
     String? stopId,
     bool? enabled,
-    String? nextArrival
+    int? nextArrival
   }) {
     return BusAlarm(id: id ?? this.id, routeName: routeName ?? this.routeName, stopId: stopId ?? this.stopId, enabled: enabled ?? this.enabled, nextArrival: nextArrival ?? this.nextArrival);
   }
