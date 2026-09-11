@@ -3,6 +3,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../widgets/app_shell.dart';
 
+// todo adapt this screen into future add new alarm process
+
 class MapScreen extends StatefulWidget { // statefulwidgets are widgets that can have modifiable internal data, they contain an immutable Widget and a mutable State object within
   const MapScreen({super.key});
 
