@@ -13,7 +13,7 @@ class BusAlarm {
     required this.nextArrival
   });
 
-  BusAlarm copyWidth({
+  BusAlarm copyWith({
     String? id,
     String? routeName,
     String? stopId,
