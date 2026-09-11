@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.fcwe1113.bus_arrival_notification_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -27,6 +27,8 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // android google maps api key
+        manifestPlaceholders["MAPS_API_KEY"] = project.findProperty("MAPS_API_KEY") as String? ?: ""
     }
 
     buildTypes {
