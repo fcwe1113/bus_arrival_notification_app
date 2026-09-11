@@ -2,7 +2,7 @@ class BusAlarm {
   final String id; // maybe gen a uuid for it or something, this is local anyways so whatever
   final String routeName; // linked to the future all routes database with prepended loc code?
   final String stopId; // same as above
-  final bool enabled; // maybe set this to true when its supposed to yell at you?
+  final bool enabled; // indicates alarm enabled (similar to ios alarm ui alarm toggle)
   final int nextArrival; // maybe hook this up to a periodic updater?
 
   const BusAlarm({ //  constructor

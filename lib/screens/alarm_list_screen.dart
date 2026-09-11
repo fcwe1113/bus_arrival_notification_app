@@ -1,3 +1,4 @@
+import 'package:bus_arrival_notification_app/widgets/alarm_card.dart';
 import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
@@ -30,7 +31,7 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     _alarms = [BusAlarm(id: "00001", routeName: "41", stopId: "1234", enabled: false, nextArrival: 12)];
   }
 
-  void _toggleAlarm(int index) {
+  void _toggleAlarm(int index) { // this will trigger on alarm toggle change, and make a copy of the alarm but with the correct toggle state
     setState(() {
       _alarms[index] = _alarms[index].copyWith(enabled: !_alarms[index].enabled);
     });
@@ -42,11 +43,9 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
         itemCount: _alarms.length,
         itemBuilder: (context, index) {
       final alarm = _alarms[index];
-      return SwitchListTile(
-        title: Text(alarm.routeName),
-        subtitle: Text("${alarm.nextArrival} minutes"),
-        value: alarm.enabled,
-        onChanged: (_) => _toggleAlarm(index),
+      return AlarmCard(
+        alarm: alarm,
+        onToggle: (_) => _toggleAlarm(index),
       );
     }));
   }
