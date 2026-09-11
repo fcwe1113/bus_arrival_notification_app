@@ -1,6 +1,8 @@
 import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
+import '../models/bus_alarm.dart';
+
 // this will be the main screen the app first goes to on first boot
 // basically the iphone alarm screen with much more information per alarm (as theyre more complex)
 
@@ -12,7 +14,7 @@ class AlarmListScreen extends StatefulWidget {
 }
 
 class _AlarmListScreenState extends State<AlarmListScreen> {
-  List<BusAlarm> _alarms = []
+  List<BusAlarm> _alarms = [];
 
   @override
   void initState() {
