@@ -36,6 +36,7 @@ class _MapScreenState extends State<MapScreen> {
     return AppShell(
       title: "Map",
       body: GoogleMap(
+        key: UniqueKey(),
         initialCameraPosition: _initialPosition,
         onMapCreated: (controller) => _mapController = controller,
         myLocationEnabled: true, // enables phone location services
