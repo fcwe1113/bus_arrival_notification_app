@@ -1,8 +1,18 @@
 import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
+import 'package:bus_arrival_notification_app/transit/providers/hk/kmb_provider.dart';
+import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:flutter/material.dart';
 
-void main() { // dart entry point
+Future<void> main() async { // dart entry point
+
+  // WidgetsFlutterBinding.ensureInitialized();
+  // final cache = TransitCacheService();
+  // final kmb = KmbProvider(cache);
+  // final stops = await kmb.fetchStops();
+  // print('Fetched ${stops.length} stops');
+  // print(stops.first.names);
+
   runApp(const MyApp()); // app entry point, working with flutter from this point on
 }
 
