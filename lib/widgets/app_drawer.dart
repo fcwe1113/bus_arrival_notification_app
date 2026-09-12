@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-// this is the actual menu object, with each menu entry
-
+/// this is the actual menu object, with each menu entry
 class AppDrawer extends StatelessWidget { // stateless bc the menu entrys are set
   const AppDrawer({super.key});
 

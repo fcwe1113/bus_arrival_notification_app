@@ -5,6 +5,7 @@ import '../widgets/app_shell.dart';
 
 // todo adapt this screen into future add new alarm process
 
+/// StatefulWidget wrapper for the map screen
 class MapScreen extends StatefulWidget { // statefulwidgets are widgets that can have modifiable internal data, they contain an immutable Widget and a mutable State object within
   const MapScreen({super.key});
 
@@ -12,6 +13,7 @@ class MapScreen extends StatefulWidget { // statefulwidgets are widgets that can
   State<MapScreen> createState() => _MapScreenState(); // MapScreen being the immutable widget and _MapScreenState() being the mutable state
 }
 
+/// State object within the map screen
 class _MapScreenState extends State<MapScreen> {
   // here State<MapScreen> DOES NOT mean a state object of a mapscreen type ala c#
   // instead it is extending the underlying State<T> and hooking up this state to the mapscreen widget

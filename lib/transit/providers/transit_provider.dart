@@ -1,4 +1,5 @@
 // abstract class for transit provider
+// todo make a provider template once the structure is set in stone
 
 import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 

@@ -1,7 +1,14 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Tracks when each provider's data was last fetched, and decides
+/// whether cached data is stale enough to warrant a live refetch.
+///
+/// Stores only small timestamp metadata — actual cached payloads
+/// live separately in [TransitCacheService].
 class TransitUpdateScheduler {
-  static const _refreshInterval = Duration(days: 1);
+  static const _refreshInterval = Duration(days: 7); // todo make this configurable later
+
+  // SharedPreferences is a wrapper for SharedPreferences(android) and UserDefaults(IOS)
 
   Future<bool> shouldRefresh(String providerCode, String endpoint) async {
     final prefs = await SharedPreferences.getInstance();

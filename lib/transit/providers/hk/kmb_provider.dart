@@ -8,10 +8,12 @@ import 'package:http/http.dart' as http;
 import '../../models/bus_stop.dart';
 import '../transit_provider.dart';
 
-class KmbProvider implements TransitProvider {
-  final TransitCacheService _cache;
+/// KMB's implementation of transit provider
+/// includes all KMB related data and API handling
+class KmbProvider implements TransitProvider { // implements means to follow the provided interface, not extending bc theres nothing to build upon
+  final TransitCacheService _cache; // starting underscore marks variable being private to this FILE
   final TransitUpdateScheduler _scheduler;
-  static const _endpointName = "stops";
+  static const _endpointName = "stops"; // static meaning var belongs to class
   static const _url = 'https://data.etabus.gov.hk/v1/transport/kmb/stop';
 
   KmbProvider(this._cache, this._scheduler);
@@ -25,15 +27,20 @@ class KmbProvider implements TransitProvider {
   @override
   String get IconAsset => "assets/icons/kmb.png";
 
+  /// Fetches the full KMB stop list, using cached data when available.
+  ///
+  /// Falls back to a live network call if no cache exists or the
+  /// cached data is stale, per [TransitUpdateScheduler]. Results are
+  /// parsed via [_parseStops], which contains no I/O of its own.
   @override
-  Future<List<BusStop>> fetchStops() async {
+  Future<List<BusStop>> fetchStops() async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
     final needsRefresh = await _scheduler.shouldRefresh(providerCode, _endpointName);
     String? rawJson;
     if (!needsRefresh) {
       rawJson = await _cache.loadRawResponse(providerCode, _endpointName);
     }
 
-    if (rawJson == null) { // it need refreshing or the read above got nothing
+    if (rawJson == null) { // will run if need refreshing or the read above got nothing
       rawJson = await _fetchAndCacheRaw();
       await _scheduler.markUpdated(providerCode, _endpointName);
     }
@@ -41,6 +48,7 @@ class KmbProvider implements TransitProvider {
     return _parseStops(rawJson);
   }
 
+  /// helper function for doing the API call and handles API errors
   Future<String> _fetchAndCacheRaw() async {
     final response = await http.get(Uri.parse(_url));
     if (response.statusCode != 200) {
@@ -50,18 +58,19 @@ class KmbProvider implements TransitProvider {
     return response.body;
   }
 
+  /// transforms data into forms the app requires
   List<BusStop> _parseStops(String rawJson) {
     final decoded = jsonDecode(rawJson);
     final List<dynamic> data = decoded["data"];
     
-    return data.map((s) {
+    return data.map((s) { // maps each json object (s) into a bus stop object
       return BusStop(
           id: "${providerCode}:${s["stop"]}",
-          names: {"en": s["name_en"] ?? "", "zh-hant": s["name_tc"] ?? "", "zh-hans": s["nname_sc"] ?? ""},
+          names: {"en": s["name_en"] ?? "", "zh-hant": s["name_tc"] ?? "", "zh-hans": s["nname_sc"] ?? ""}, // all the ?? is for in case anything changes it doesnt error and die
           lat: double.tryParse(s["lat"].toString()),
           lng: double.tryParse(s["lng"].toString()),
           providerCode: providerCode
       );
-    }).toList();
+    }).toList(); // map returns an Iterable object and we need to toList
   }
 }

@@ -1,9 +1,8 @@
 import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
 import 'package:flutter/material.dart';
 
-// the per alarm display on the alarm list screen
-// basically the gui template for each given alarm
-
+/// the per alarm display on the alarm list screen
+/// basically the gui template for each given alarm
 class AlarmCard extends StatelessWidget { // note it takes the alarm object as required input
   final BusAlarm alarm;
   final ValueChanged<bool> onToggle; // callback for a value changing
