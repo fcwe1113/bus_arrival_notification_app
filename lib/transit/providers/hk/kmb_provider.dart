@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
+import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
@@ -9,10 +10,11 @@ import '../transit_provider.dart';
 
 class KmbProvider implements TransitProvider {
   final TransitCacheService _cache;
+  final TransitUpdateScheduler _scheduler;
   static const _endpointName = "stops";
   static const _url = 'https://data.etabus.gov.hk/v1/transport/kmb/stop';
 
-  KmbProvider(this._cache);
+  KmbProvider(this._cache, this._scheduler);
 
   @override
   String get providerCode => "kmb";
@@ -25,8 +27,17 @@ class KmbProvider implements TransitProvider {
 
   @override
   Future<List<BusStop>> fetchStops() async {
-    String? rawJson = await _cache.loadRawResponse(providerCode, _endpointName);
-    rawJson ??= await _fetchAndCacheRaw();
+    final needsRefresh = await _scheduler.shouldRefresh(providerCode, _endpointName);
+    String? rawJson;
+    if (!needsRefresh) {
+      rawJson = await _cache.loadRawResponse(providerCode, _endpointName);
+    }
+
+    if (rawJson == null) { // it need refreshing or the read above got nothing
+      rawJson = await _fetchAndCacheRaw();
+      await _scheduler.markUpdated(providerCode, _endpointName);
+    }
+
     return _parseStops(rawJson);
   }
 
