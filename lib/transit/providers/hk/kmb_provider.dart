@@ -52,6 +52,26 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     return _fetchWithCache(_routeEndpointName, _routeUrl, _parseRoutes);
   }
 
+  Future<List<String>> fetchRouteStopIds(String route, String bound, String serviceType) async {
+    final endpointName = "route_stop_${route}_${bound}_${serviceType}";
+    final url = 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route}/${bound == 'O' ? 'outbound' : 'inbound'}/${serviceType}';
+
+    final needsRefresh = await _scheduler.shouldRefresh(providerCode, endpointName);
+    String? rawJson;
+    if (!needsRefresh) {
+      rawJson = await _cache.loadRawResponse(providerCode, endpointName);
+    }
+
+    if (rawJson == null) { // will run if need refreshing or the read above got nothing
+      rawJson = await _fetchAndCacheRaw(endpointName, url);
+      await _scheduler.markUpdated(providerCode, endpointName);
+    }
+
+    final decoded = jsonDecode(rawJson);
+    final data = decoded["data"] as List;
+    return data.map((s) => s["stop"] as String).toList();
+  }
+
   Future<List<T>> _fetchWithCache<T>(String endpointName, String url, List<T> Function(String rawJson) parse) async {
     final needsRefresh = await _scheduler.shouldRefresh(providerCode, _stopsEndpointName);
     String? rawJson;
@@ -116,6 +136,26 @@ class KmbProvider implements TransitProvider { // implements means to follow the
           destinationText: {"en": r["dest_en"] ?? "", "zh-Hant": r["dest_tc"] ?? "", "zh-Hans": r["dest_sc"] ?? ""},
           providerCode: providerCode
       );
+    }).toList();
+  }
+
+  Future<List<BusStop>> buildStopsWithRoutes() async {
+    final stops = await fetchStops();
+    final routes = await fetchRoute();
+
+    final routeIdsByRawStopId = <String, Set<String>>{};
+
+    for (final route in routes) {
+      final rawStopIds = await fetchRouteStopIds(route.routeNumber, route.bound, "1"); // replace 1 later
+      for (final rawStopId in rawStopIds) {
+        routeIdsByRawStopId.putIfAbsent(rawStopId, () => {}).add(route.id);
+      }
+    }
+
+    return stops.map((stop) {
+      final rawStopId = stop.id.split(":")[1]; // strips the "kmb:" prefix
+      final routeIds = routeIdsByRawStopId[rawStopId] ?? {};
+      return stop.copyWith(servingRouteIds: routeIds.toList());
     }).toList();
   }
 }
