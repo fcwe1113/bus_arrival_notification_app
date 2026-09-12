@@ -9,7 +9,7 @@ Future<void> main() async { // dart entry point
 
   WidgetsFlutterBinding.ensureInitialized();
   final selectionService = ProviderSelectionService();
-  final setupDone = await selectionService.hasCompletedSetup();
+  final setupDone = await selectionService.hasCompletedSetup(); // check if user did setup before
 
   runApp(MyApp(initialRoute: setupDone ? "/" : "/setup",)); // app entry point, working with flutter from this point on
 }

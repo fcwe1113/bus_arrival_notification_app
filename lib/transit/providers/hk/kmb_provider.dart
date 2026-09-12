@@ -52,6 +52,11 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     return _fetchWithCache(_routeEndpointName, _routeUrl, _parseRoutes, forceRefresh: forceRefresh);
   }
 
+  /// Fetches the full list of stops for every route, using cached data when available.
+  ///
+  /// Falls back to live network call if no cache exists or the cached data is stale
+  /// unlike [fetchStops] and [fetchRoutes] the parsing code is also here because we have to
+  /// register routes into every stop and that requires looping through every route in the list
   Future<List<String>> fetchRouteStopIds(String route, String bound, String serviceType, {bool forceRefresh = false}) async {
     final endpointName = "route_stop_${route}_${bound}_${serviceType}";
     final url = 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route}/${bound == 'O' ? 'outbound' : 'inbound'}/${serviceType}';
@@ -72,6 +77,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     return data.map((s) => s["stop"] as String).toList();
   }
 
+  /// Fetches a given endpoint, live calling the url if not cache is available
   Future<List<T>> _fetchWithCache<T>(String endpointName, String url, List<T> Function(String rawJson) parse, {bool forceRefresh = false}) async {
     final needsRefresh = forceRefresh || await _scheduler.shouldRefresh(providerCode, endpointName);
     String? rawJson;
@@ -98,7 +104,9 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     return response.body;
   }
 
-  /// transforms data into forms the app requires
+  /// transforms stops data into forms the app requires
+  /// in this case just slotting the different fields the api
+  /// responded into the correct slot
   List<BusStop> _parseStops(String rawJson) {
     final decoded = jsonDecode(rawJson);
     final List<dynamic> data = decoded["data"];
@@ -114,6 +122,9 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     }).toList(); // map returns an Iterable object and we need to toList
   }
 
+  /// transforms route data into forms the app requires
+  /// in this case in addition to slotting data into the correct var
+  /// placeholder bus stop objects were created to fill origin and destination
   List<BusRoute> _parseRoutes(String rawJson) {
     final decoded = jsonDecode(rawJson);
     final List<dynamic> data = decoded["data"];
@@ -130,18 +141,14 @@ class KmbProvider implements TransitProvider { // implements means to follow the
           names: {"en": routeNumber, "zh-Hant": routeNumber},
           routeNumber: routeNumber,
           bound: bound,
-          origin: BusStop.placeholder(
-              id: "${providerCode}:origin_${routeNumber}${bound}",
-              name: r["orig_en"] ?? "", providerCode: providerCode),
-          destination: BusStop.placeholder(
-              id: "${providerCode}:destination_${routeNumber}${bound}",
-              name: r["dest_en"] ?? "", providerCode: providerCode),
+          originText: {"en": r["origin_en"] ?? "", "zh-Hant": r["origin_tc"] ?? "", "zh-Hans": r["origin_sc"] ?? ""},
           destinationText: {"en": r["dest_en"] ?? "", "zh-Hant": r["dest_tc"] ?? "", "zh-Hans": r["dest_sc"] ?? ""},
           providerCode: providerCode
       );
     }).toList();
   }
 
+  ///
   Future<List<BusStop>> buildStopsWithRoutes({void Function(int done, int total)? onProgress, bool forceRefresh = false}) async {
     final stops = await fetchStops();
     final routes = await fetchRoutes();
