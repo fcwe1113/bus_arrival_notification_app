@@ -10,7 +10,7 @@ abstract class TransitProvider {
   String get providerName;
   String get IconAsset; // contains the link to the icon
 
-  Future<List<BusStop>> fetchStops();
-  Future<List<BusRoute>> fetchRoute();
+  Future<List<BusStop>> fetchStops({required bool forceRefresh});
+  Future<List<BusRoute>> fetchRoutes({required bool forceRefresh});
   // Future<List<StopPrediciton>> fetchPredicitons(String stopID);
 }

@@ -1,8 +1,8 @@
 import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
+import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
-import 'package:bus_arrival_notification_app/transit/providers/hk/kmb_provider.dart';
+import 'package:bus_arrival_notification_app/screens/setup_screen.dart';
 import 'package:bus_arrival_notification_app/transit/services/provider_selection_service.dart';
-import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async { // dart entry point
@@ -41,11 +41,12 @@ class MyApp extends StatelessWidget { // statelesswidget only has constant inter
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      initialRoute: "/", // indicate which route to show on boot
+      initialRoute: initialRoute, // indicate which route to show on boot
       routes: { // list of screens with the routes linked to it
         "/": (context) => const AlarmListScreen(),
         "/map": (context) => const MapScreen(),
         "/setup": (context) => const SetupScreen(),
+        "/loading": (context) => const LoadingScreen(),
         // add more routes here as we add more screens
       },
     );

@@ -50,22 +50,23 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onStopTapped(BusStop stop) async {
     // todo Placeholder — actual implementation needs the route-stop endpoint
-    final routeStops = await kmbProvider.fetchRouteStopSequence(routeId, bound);
-    final points = routeStops
-        .where((s) => s.isResolved)
-        .map((s) => LatLng(s.lat!, s.lng!))
-        .toList();
-
-    setState(() {
-      _routePolylines = {
-        Polyline(
-          polylineId: PolylineId(routeId),
-          points: points,
-          color: Colors.blue,
-          width: 4,
-        ),
-      };
-    });
+    throw UnimplementedError();
+    // final routeStops = await kmbProvider.fetchRouteStopSequence(routeId, bound);
+    // final points = routeStops
+    //     .where((s) => s.isResolved)
+    //     .map((s) => LatLng(s.lat!, s.lng!))
+    //     .toList();
+    //
+    // setState(() {
+    //   _routePolylines = {
+    //     Polyline(
+    //       polylineId: PolylineId(routeId),
+    //       points: points,
+    //       color: Colors.blue,
+    //       width: 4,
+    //     ),
+    //   };
+    // });
   }
 
   // initial position of the map on load, currently on london, replace with user settings later

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
 import '../../models/bus_stop.dart';
@@ -38,8 +37,8 @@ class KmbProvider implements TransitProvider { // implements means to follow the
   /// cached data is stale, per [TransitUpdateScheduler]. Results are
   /// parsed via [_parseStops], which contains no I/O of its own.
   @override
-  Future<List<BusStop>> fetchStops() async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
-    return _fetchWithCache(_stopsEndpointName, _stopsUrl, _parseStops);
+  Future<List<BusStop>> fetchStops({bool forceRefresh = false}) async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
+    return _fetchWithCache(_stopsEndpointName, _stopsUrl, _parseStops, forceRefresh: forceRefresh);
   }
 
   /// Fetches the full KMB route list, using cached data when available.
@@ -48,15 +47,16 @@ class KmbProvider implements TransitProvider { // implements means to follow the
   /// cached data is stale, per [TransitUpdateScheduler]. Results are
   /// parsed via [_parseStops], which contains no I/O of its own.
   @override
-  Future<List<BusRoute>> fetchRoute() async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
-    return _fetchWithCache(_routeEndpointName, _routeUrl, _parseRoutes);
+  Future<List<BusRoute>> fetchRoutes({bool forceRefresh = false}) async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
+    print("fetchroute passed in endpointname ${_routeEndpointName} and url ${_routeUrl}");
+    return _fetchWithCache(_routeEndpointName, _routeUrl, _parseRoutes, forceRefresh: forceRefresh);
   }
 
-  Future<List<String>> fetchRouteStopIds(String route, String bound, String serviceType) async {
+  Future<List<String>> fetchRouteStopIds(String route, String bound, String serviceType, {bool forceRefresh = false}) async {
     final endpointName = "route_stop_${route}_${bound}_${serviceType}";
     final url = 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route}/${bound == 'O' ? 'outbound' : 'inbound'}/${serviceType}';
 
-    final needsRefresh = await _scheduler.shouldRefresh(providerCode, endpointName);
+    final needsRefresh = forceRefresh || await _scheduler.shouldRefresh(providerCode, endpointName);
     String? rawJson;
     if (!needsRefresh) {
       rawJson = await _cache.loadRawResponse(providerCode, endpointName);
@@ -72,16 +72,16 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     return data.map((s) => s["stop"] as String).toList();
   }
 
-  Future<List<T>> _fetchWithCache<T>(String endpointName, String url, List<T> Function(String rawJson) parse) async {
-    final needsRefresh = await _scheduler.shouldRefresh(providerCode, _stopsEndpointName);
+  Future<List<T>> _fetchWithCache<T>(String endpointName, String url, List<T> Function(String rawJson) parse, {bool forceRefresh = false}) async {
+    final needsRefresh = forceRefresh || await _scheduler.shouldRefresh(providerCode, endpointName);
     String? rawJson;
     if (!needsRefresh) {
-      rawJson = await _cache.loadRawResponse(providerCode, _stopsEndpointName);
+      rawJson = await _cache.loadRawResponse(providerCode, endpointName);
     }
 
     if (rawJson == null) { // will run if need refreshing or the read above got nothing
-      rawJson = await _fetchAndCacheRaw(_stopsEndpointName, _stopsUrl);
-      await _scheduler.markUpdated(providerCode, _stopsEndpointName);
+      rawJson = await _fetchAndCacheRaw(endpointName, url);
+      await _scheduler.markUpdated(providerCode, endpointName);
     }
 
     return parse(rawJson);
@@ -89,11 +89,12 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
   /// helper function for doing the API call and handles API errors
   Future<String> _fetchAndCacheRaw(String endpointName, String url) async {
+    print("calling API at: ${url}");
     final response = await http.get(Uri.parse(url));
     if (response.statusCode != 200) {
       throw Exception("${providerName} ${endpointName} fetch failed: ${response.statusCode}");
     }
-    await _cache.saveRawResponse(providerCode, _stopsEndpointName, response.body);
+    await _cache.saveRawResponse(providerCode, endpointName, response.body);
     return response.body;
   }
 
@@ -105,7 +106,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     return data.map((s) { // maps each json object (s) into a bus stop object
       return BusStop(
           id: "${providerCode}:${s["stop"]}",
-          names: {"en": s["name_en"] ?? "", "zh-hant": s["name_tc"] ?? "", "zh-hans": s["nname_sc"] ?? ""}, // all the ?? is for in case anything changes it doesnt error and die
+          names: {"en": s["name_en"] ?? "", "zh-Hant": s["name_tc"] ?? "", "zh-Hans": s["name_sc"] ?? ""}, // all the ?? is for in case anything changes it doesnt error and die
           lat: double.tryParse(s["lat"].toString()),
           lng: double.tryParse(s["lng"].toString()),
           providerCode: providerCode
@@ -118,9 +119,11 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     final List<dynamic> data = decoded["data"];
 
     return data.map((r) {
-      final routeNumber = r["route"] as String;
-      final bound = r["bound"] as String;
-      final serviceType = r["service_type"] as String;
+      final routeNumber = r["route"] as String? ?? "";
+      final bound = r["bound"] as String? ?? "";
+      final serviceType = r["service_type"] as String? ?? "";
+
+      // print("${providerCode}:${routeNumber}_${bound}_${serviceType}");
 
       return BusRoute(
           id: "${providerCode}:${routeNumber}_${bound}_${serviceType}",
@@ -139,17 +142,19 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     }).toList();
   }
 
-  Future<List<BusStop>> buildStopsWithRoutes() async {
+  Future<List<BusStop>> buildStopsWithRoutes({void Function(int done, int total)? onProgress, bool forceRefresh = false}) async {
     final stops = await fetchStops();
-    final routes = await fetchRoute();
+    final routes = await fetchRoutes();
 
     final routeIdsByRawStopId = <String, Set<String>>{};
 
-    for (final route in routes) {
-      final rawStopIds = await fetchRouteStopIds(route.routeNumber, route.bound, "1"); // replace 1 later
+    for (var i = 0; i < routes.length; i++) {
+      final route = routes[i];
+      final rawStopIds = await fetchRouteStopIds(route.routeNumber, route.bound, "1", forceRefresh: forceRefresh); // replace 1 later
       for (final rawStopId in rawStopIds) {
         routeIdsByRawStopId.putIfAbsent(rawStopId, () => {}).add(route.id);
       }
+      onProgress?.call(i + 1, routes.length);
     }
 
     return stops.map((stop) {
