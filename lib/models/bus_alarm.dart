@@ -1,3 +1,6 @@
+// actual alarm object definition
+// todo add api check cycle here maybe?
+
 class BusAlarm {
   final String id; // maybe gen a uuid for it or something, this is local anyways so whatever
   final String routeName; // linked to the future all routes database with prepended loc code?
