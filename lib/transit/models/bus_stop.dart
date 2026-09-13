@@ -6,13 +6,15 @@ class BusStop {
   final double? lat;
   final double? lng;
   final String providerCode;
+  final List<String> servingRouteIds;
 
   const BusStop({
     required this.id,
     required this.names,
     this.lat,
     this.lng,
-    required this.providerCode
+    required this.providerCode,
+    this.servingRouteIds = const [] // defaults into empty list
   });
 
   String nameFor(String locale) => names[locale] ?? names["en"] ?? id;
@@ -29,4 +31,8 @@ class BusStop {
   );
 
   bool get isResolved => lat != null && lng != null;
+
+  BusStop copyWith({List<String>? servingRouteIds}) {
+    return BusStop(id: id, names: names, providerCode: providerCode, lat: lat, lng: lng, servingRouteIds: servingRouteIds ?? this.servingRouteIds);
+  }
 }

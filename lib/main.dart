@@ -1,23 +1,22 @@
 import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
+import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
-import 'package:bus_arrival_notification_app/transit/providers/hk/kmb_provider.dart';
-import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
+import 'package:bus_arrival_notification_app/screens/setup_screen.dart';
+import 'package:bus_arrival_notification_app/transit/services/provider_selection_service.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async { // dart entry point
 
-  // WidgetsFlutterBinding.ensureInitialized();
-  // final cache = TransitCacheService();
-  // final kmb = KmbProvider(cache);
-  // final stops = await kmb.fetchStops();
-  // print('Fetched ${stops.length} stops');
-  // print(stops.first.names);
+  WidgetsFlutterBinding.ensureInitialized();
+  final selectionService = ProviderSelectionService();
+  final setupDone = await selectionService.hasCompletedSetup(); // check if user did setup before
 
-  runApp(const MyApp()); // app entry point, working with flutter from this point on
+  runApp(MyApp(initialRoute: setupDone ? "/" : "/setup",)); // app entry point, working with flutter from this point on
 }
 
 class MyApp extends StatelessWidget { // statelesswidget only has constant internal data
-  const MyApp({super.key});
+  final String initialRoute;
+  const MyApp({super.key, required this.initialRoute});
 
   // This widget is the root of your application.
   @override
@@ -42,10 +41,12 @@ class MyApp extends StatelessWidget { // statelesswidget only has constant inter
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      initialRoute: "/", // indicate which route to show on boot
+      initialRoute: initialRoute, // indicate which route to show on boot
       routes: { // list of screens with the routes linked to it
         "/": (context) => const AlarmListScreen(),
         "/map": (context) => const MapScreen(),
+        "/setup": (context) => const SetupScreen(),
+        "/loading": (context) => const LoadingScreen(),
         // add more routes here as we add more screens
       },
     );
