@@ -159,21 +159,50 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
     final stops = await fetchStops();
     final routes = await fetchRoutes();
-
     final routeIdsByRawStopId = <String, Set<String>>{};
-
-    for (var i = 0; i < routes.length; i++) {
-      final route = routes[i];
-      final rawStopIds = await fetchRouteStopIds(route.routeNumber, route.bound, "1", forceRefresh: forceRefresh); // replace 1 later
-      for (final rawStopId in rawStopIds) {
-        routeIdsByRawStopId.putIfAbsent(rawStopId, () => {}).add(route.id);
+    
+    const batchSize = 20;
+    var pendingRoutes = List<BusRoute>.from(routes);
+    var doneCount = 0;
+    
+    const maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts && pendingRoutes.isNotEmpty; attempt++) {
+      if (attempt > 1) {
+        onProgress?.call(doneCount, routes.length);
+        await Future.delayed(const Duration(seconds: 5));
       }
-      onProgress?.call(i + 1, routes.length);
+      
+      final failedRoutes = <BusRoute>[];
+      
+      for (var i = 0; i< pendingRoutes.length; i += batchSize) {
+        final batch = pendingRoutes.skip(i).take(batchSize).toList();
+        final results = await Future.wait(batch.map((route) async {
+          try {
+            final stopIds = await fetchRouteStopIds(route.routeNumber, route.bound, "1", forceRefresh: forceRefresh);
+            return (route: route, stopIds: stopIds, failed: false);
+          } catch (e) {
+            return (route: route, stopIds: <String>[], failed: true);
+          }
+        }));
+
+        for (final result in results) {
+          if (result.failed) {
+            failedRoutes.add(result.route);
+          } else {
+            for (final rawStopId in result.stopIds) {
+              routeIdsByRawStopId.putIfAbsent(rawStopId, () => {}).add(result.route.id);
+            }
+            doneCount++;
+          }
+        }
+        onProgress?.call(doneCount, routes.length);
+      }
+      pendingRoutes = failedRoutes;
     }
 
     final enrichedStops = stops.map((stop) {
-      final rawStopId = stop.id.split(":")[1]; // strips the "kmb:" prefix
-      final routeIds = routeIdsByRawStopId[rawStopId] ?? {};
+      final rawStopId = stop.id.split(":")[1];
+      final routeIds = routeIdsByRawStopId[rawStopId] ?? <String>[];
       return stop.copyWith(servingRouteIds: routeIds.toList());
     }).toList();
 

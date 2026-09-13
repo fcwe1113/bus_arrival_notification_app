@@ -1,5 +1,4 @@
-// bus stop data struct definition file
-
+/// bus stop data struct definition file
 class BusStop {
   final String id; // composited into providerCode:id
   final Map<String, String> names; // {"lang1": "name1", "lang2": "name2", ...}, defaults to "en"
