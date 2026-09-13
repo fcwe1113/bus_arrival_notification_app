@@ -5,12 +5,11 @@ import 'package:bus_arrival_notification_app/transit/services/transit_cache_serv
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 
 final TransitCacheService _cacheService = TransitCacheService();
-final TransitUpdateScheduler _updateScheduler = TransitUpdateScheduler();
-final ApiCaller _apiCaller = ApiCaller(_cacheService, _updateScheduler);
+final ApiCaller _apiCaller = ApiCaller(_cacheService);
 
 final Map<String, List<TransitProvider>> providersByLocale = {
   'hk': [
-    KmbProvider(_apiCaller, _cacheService)
+    KmbProvider(_apiCaller)
   ],
   // 'nyc': [MtaProvider()],  // future
 };

@@ -29,4 +29,24 @@ class BusRoute {
   BusRoute copyWith({List<BusStop>? stops}) {
     return BusRoute(id: id, names: names, routeNumber: routeNumber, bound: bound, originText: originText, destinationText: destinationText, providerCode: providerCode, stops: stops ?? this.stops);
   }
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "names": names,
+    "routeNumber": routeNumber,
+    "bound": bound,
+    "originText": originText,
+    "destinationText": destinationText,
+    "providerCode": providerCode,
+  };
+
+  static BusRoute fromJson(Map<String, dynamic> json) => BusRoute(
+      id: json["id"],
+      names: Map<String, String>.from(json["names"]),
+      routeNumber: json["routeNumber"],
+      bound: json["bound"],
+      originText: Map<String, String>.from(json["originText"]),
+      destinationText: Map<String, String>.from(json["destinationText"]),
+      providerCode: json["providerCode"],
+  );
 }

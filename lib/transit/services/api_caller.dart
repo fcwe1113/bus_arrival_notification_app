@@ -7,13 +7,17 @@ class BatchCallItem<K, T> {
   final K key;
   final String endpointName;
   final String url;
-  final T Function(String rawJson) parse;
+  final T Function(String rawJson) parseRaw;
+  final Map<String, dynamic> Function(T) toJson;
+  final T Function(Map<String, dynamic>) fromJson;
 
   const BatchCallItem({
     required this.key,
     required this.endpointName,
     required this.url,
-    required this.parse
+    required this.parseRaw,
+    required this.toJson,
+    required this.fromJson
   });
 }
 
@@ -26,24 +30,33 @@ class BatchCallResult<K, T> {
 
 class ApiCaller {
   final TransitCacheService _cache;
-  final TransitUpdateScheduler _scheduler;
+  static const _defaultMaxAge = Duration(days: 7);
 
-  ApiCaller(this._cache, this._scheduler);
+  ApiCaller(this._cache);
 
-  Future<T> call<T>({required String providerCode, required String endpointName, required String url, required T Function(String rawJson) parse, bool forceRefresh = false}) async {
-    final needsRefresh = forceRefresh || await _scheduler.shouldRefresh(providerCode, endpointName);
-    String? rawJson;
-
-    if (!needsRefresh) {
-      rawJson = await _cache.loadRawResponse(providerCode, endpointName);
+  Future<T> call<T>({
+    required String providerCode,
+    required String endpointName,
+    required String url,
+    required T Function(String rawJson) parseRaw,
+    required Map<String, dynamic> Function(T) toJson,
+    required T Function(Map<String, dynamic>) fromJson,
+    bool forceRefresh = false,
+    Duration maxAge = _defaultMaxAge
+  }) async {
+    if (!forceRefresh) {
+      final cached = await _cache.load<T>(providerCode: providerCode, endpointName: endpointName, fromJson: fromJson);
+      if (cached != null && !cached.isStale(maxAge)) return cached.data;
     }
 
-    if (rawJson == null) {
-      rawJson = await _fetchAndCacheRaw(providerCode, endpointName, url);
-      await _scheduler.markUpdated(providerCode, endpointName);
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode != 200) {
+      throw Exception("${endpointName} fetch failed: ${response.statusCode}");
     }
 
-    return parse(rawJson!);
+    final data = parseRaw(response.body);
+    await _cache.save<T>(providerCode: providerCode, endpointName: endpointName, data: data, sourceUrl: url, toJson: toJson);
+    return data;
   }
 
   Future<BatchCallResult<K, T>> callBatch<K, T>({
@@ -53,6 +66,7 @@ class ApiCaller {
     int maxAttempts = 3,
     Duration retryDelay = const Duration(seconds: 5),
     bool forceRefresh = false,
+    Duration maxAge = _defaultMaxAge,
     void Function(int done, int total)? onProgress
   }) async {
     final results = <K, T>{};
@@ -70,16 +84,18 @@ class ApiCaller {
       for (var i = 0; i < pending.length; i += batchSize) {
         final batch = pending.skip(i).take(batchSize).toList();
 
-        final batchResults = await Future.wait(
-          batch.map((item) async {
-            try {
-              final value = await call<T>(
-                providerCode: providerCode,
-                endpointName: item.endpointName,
-                url: item.url,
-                parse: item.parse,
-                forceRefresh: forceRefresh
-              );
+        final batchResults = await Future.wait(batch.map((item) async {
+          try {
+            final value = await call<T>(
+              providerCode: providerCode,
+              endpointName: item.endpointName,
+              url: item.url,
+              parseRaw: item.parseRaw,
+              toJson: item.toJson,
+              fromJson: item.fromJson,
+              forceRefresh: forceRefresh,
+              maxAge: maxAge
+            );
               return (item: item, value: value, failed: false);
             } catch (e) {
               return (item: item, value: null, failed: true);
@@ -102,13 +118,13 @@ class ApiCaller {
     return BatchCallResult(results: results, failedKeys: pending.map((i) => i.key).toList());
   }
 
-  Future<String> _fetchAndCacheRaw(String providerCode, String endpointName, String url) async {
-    print("fetching from ${url} for ${endpointName}");
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode != 200) {
-      throw Exception("${endpointName} fetch failed: ${response.statusCode}");
-    }
-    await _cache.saveRawResponse(providerCode, endpointName, response.body);
-    return response.body;
+  Future<void> saveComputed<T>({
+    required String providerCode,
+    required String endpointName,
+    required T data,
+    required String sourceUrl,
+    required Map<String, dynamic> Function(T) toJson
+  }) async {
+    return _cache.save(providerCode: providerCode, endpointName: endpointName, data: data, sourceUrl: sourceUrl, toJson: toJson);
   }
 }
