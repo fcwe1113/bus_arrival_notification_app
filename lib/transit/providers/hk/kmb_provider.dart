@@ -6,6 +6,7 @@ import 'package:bus_arrival_notification_app/transit/services/transit_update_sch
 import 'package:http/http.dart' as http;
 
 import '../../models/bus_stop.dart';
+import '../../models/enrichment_result.dart';
 import '../transit_provider.dart';
 
 /// KMB's implementation of transit provider
@@ -151,32 +152,34 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
   ///
   @override
-  Future<List<BusStop>> buildStopsWithRoutes({void Function(int done, int total)? onProgress, bool forceRefresh = false}) async {
-    if (!forceRefresh) {
+  Future<EnrichmentResult> buildStopsWithRoutes({void Function(int done, int total)? onProgress, bool forceRefresh = false}) async {
+    if (!forceRefresh) { // will try to read from cache if its available
       final cached = await _cache.loadRawResponse(providerCode, _enrichedStopsEndpointName);
-      if (cached != null) return _deserializeEnrichedStops(cached);
+      if (cached != null) return EnrichmentResult(stops: _deserializeEnrichedStops(cached), failedRouteNumbers: []);
     }
 
+    // get the full stop/route list
     final stops = await fetchStops();
     final routes = await fetchRoutes();
     final routeIdsByRawStopId = <String, Set<String>>{};
+
+    const batchSize = 20; // controls how many calls the app tries at once
+    var pendingRoutes = List<BusRoute>.from(routes); // populated at start with full route list
+    var doneCount = 0; // progress report tally
     
-    const batchSize = 20;
-    var pendingRoutes = List<BusRoute>.from(routes);
-    var doneCount = 0;
-    
-    const maxAttempts = 3;
+    const maxAttempts = 3; // max attempts before giving up
     for (var attempt = 1; attempt <= maxAttempts && pendingRoutes.isNotEmpty; attempt++) {
-      if (attempt > 1) {
+      if (attempt > 1) { // reset progress counter and delays attempts past first try
         onProgress?.call(doneCount, routes.length);
         await Future.delayed(const Duration(seconds: 5));
       }
       
-      final failedRoutes = <BusRoute>[];
+      final failedRoutes = <BusRoute>[]; // list to collect failed calls
       
-      for (var i = 0; i< pendingRoutes.length; i += batchSize) {
+      for (var i = 0; i< pendingRoutes.length; i += batchSize) { // loop through the list per batch size
         final batch = pendingRoutes.skip(i).take(batchSize).toList();
         final results = await Future.wait(batch.map((route) async {
+          // creates a future per call and catches any individual errors
           try {
             final stopIds = await fetchRouteStopIds(route.routeNumber, route.bound, "1", forceRefresh: forceRefresh);
             return (route: route, stopIds: stopIds, failed: false);
@@ -185,6 +188,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
           }
         }));
 
+        // move data from sucessful calls into the correct place and failed calls into the failed list
         for (final result in results) {
           if (result.failed) {
             failedRoutes.add(result.route);
@@ -208,7 +212,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
     await _cache.saveRawResponse(providerCode, _enrichedStopsEndpointName, jsonEncode(enrichedStops.map(_serializeStop).toList()));
 
-    return enrichedStops;
+    return EnrichmentResult(stops: enrichedStops, failedRouteNumbers: pendingRoutes.map((r) => r.routeNumber).toList());
   }
 
   Map<String, dynamic> _serializeStop(BusStop stop) => {

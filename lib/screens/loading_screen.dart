@@ -21,11 +21,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   Future<void> _runSetup() async {
-    setState(() {
-      _error = null;
-    });
+    setState(() => _error = null);
     try {
-      await initializeTransitData(
+      final failures = await initializeTransitData(
         forceRefresh: widget.forceRefresh,
         onProgress: (message, progress) {
           setState(() {
@@ -34,6 +32,19 @@ class _LoadingScreenState extends State<LoadingScreen> {
           });
         },
       );
+      
+      if (mounted && failures.isNotEmpty) {
+        await showDialog(context: context, builder: (context) => AlertDialog(
+          title: const Text("Some routes failed to load"),
+          content: Text(
+              "${failures.length} routes(s) could  not be fetched after several attempts:\n"
+              "${failures.join(" ")}\n\n"
+              "You can check data integrity later from Settings"
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
+        ));
+      }
+      
       if (mounted) Navigator.pushReplacementNamed(context, "/");
     } catch (e) {
       if (mounted) {

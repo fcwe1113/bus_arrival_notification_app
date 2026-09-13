@@ -46,7 +46,7 @@ class _MapScreenState extends State<MapScreen> {
 
     for (final provider in availableProviders) {
       if (provider is KmbProvider) {
-        allStops.addAll(await provider.buildStopsWithRoutes());
+        allStops.addAll((await provider.buildStopsWithRoutes()) as Iterable<BusStop>); // todo check
       } else {
         allStops.addAll(await provider.fetchStops());
       }
