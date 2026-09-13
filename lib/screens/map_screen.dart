@@ -32,7 +32,7 @@ class _MapScreenState extends State<MapScreen> {
   Set<Marker> _visibleMarkers = {};
   bool _loading = true;
   BusStop? selectedStop;
-  Set<Polyline> _routePolylines = {};
+  final Set<Polyline> _routePolylines = {};
 
   @override
   void initState() {

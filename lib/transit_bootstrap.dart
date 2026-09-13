@@ -20,7 +20,7 @@ Future<void> initializeTransitData({ProgressCallback? onProgress, bool forceRefr
     if (provider is KmbProvider) {
       await provider.buildStopsWithRoutes(
         forceRefresh: forceRefresh,
-        onProgress: (done, total) => onProgress?.call("Linking routes to stops for ${provider.providerName} (${done}/${total})", total > 0 ? done / total : null)
+        onProgress: (done, total) => onProgress?.call("Linking routes to stops for ${provider.providerName} ($done/$total)", total > 0 ? done / total : null)
       );
     }
   }

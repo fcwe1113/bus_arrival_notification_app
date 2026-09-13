@@ -23,8 +23,8 @@ class BusRoute {
     this.stops = const [],
   });
 
-  BusStop get origin => stops.isNotEmpty ? stops.first : BusStop.placeholder(id: "${providerCode}:origin_${routeNumber}${bound}", name: originText["en"] ?? "", providerCode: providerCode);
-  BusStop get destination => stops.isNotEmpty ? stops.last : BusStop.placeholder(id: "${providerCode}:destination_${routeNumber}${bound}", name: destinationText["en"] ?? "", providerCode: providerCode);
+  BusStop get origin => stops.isNotEmpty ? stops.first : BusStop.placeholder(id: "$providerCode:origin_$routeNumber$bound", name: originText["en"] ?? "", providerCode: providerCode);
+  BusStop get destination => stops.isNotEmpty ? stops.last : BusStop.placeholder(id: "$providerCode:destination_$routeNumber$bound", name: destinationText["en"] ?? "", providerCode: providerCode);
 
   BusRoute copyWith({List<BusStop>? stops}) {
     return BusRoute(id: id, names: names, routeNumber: routeNumber, bound: bound, originText: originText, destinationText: destinationText, providerCode: providerCode, stops: stops ?? this.stops);

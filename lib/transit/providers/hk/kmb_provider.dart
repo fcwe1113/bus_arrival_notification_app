@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:http/http.dart' as http;
@@ -50,7 +49,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
   /// parsed via [_parseStops], which contains no I/O of its own.
   @override
   Future<List<BusRoute>> fetchRoutes({bool forceRefresh = false}) async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
-    print("fetchroute passed in endpointname ${_routeEndpointName} and url ${_routeUrl}");
+    print("fetchroute passed in endpointname $_routeEndpointName and url $_routeUrl");
     return _fetchWithCache(_routeEndpointName, _routeUrl, _parseRoutes, forceRefresh: forceRefresh);
   }
 
@@ -60,8 +59,8 @@ class KmbProvider implements TransitProvider { // implements means to follow the
   /// unlike [fetchStops] and [fetchRoutes] the parsing code is also here because we have to
   /// register routes into every stop and that requires looping through every route in the list
   Future<List<String>> fetchRouteStopIds(String route, String bound, String serviceType, {bool forceRefresh = false}) async {
-    final endpointName = "route_stop_${route}_${bound}_${serviceType}";
-    final url = 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route}/${bound == 'O' ? 'outbound' : 'inbound'}/${serviceType}';
+    final endpointName = "route_stop_${route}_${bound}_$serviceType";
+    final url = 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/$route/${bound == 'O' ? 'outbound' : 'inbound'}/$serviceType';
 
     final needsRefresh = forceRefresh || await _scheduler.shouldRefresh(providerCode, endpointName);
     String? rawJson;
@@ -97,10 +96,10 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
   /// helper function for doing the API call and handles API errors
   Future<String> _fetchAndCacheRaw(String endpointName, String url) async {
-    print("calling API at: ${url}");
+    print("calling API at: $url");
     final response = await http.get(Uri.parse(url));
     if (response.statusCode != 200) {
-      throw Exception("${providerName} ${endpointName} fetch failed: ${response.statusCode}");
+      throw Exception("$providerName $endpointName fetch failed: ${response.statusCode}");
     }
     await _cache.saveRawResponse(providerCode, endpointName, response.body);
     return response.body;
@@ -115,7 +114,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     
     return data.map((s) { // maps each json object (s) into a bus stop object
       return BusStop(
-          id: "${providerCode}:${s["stop"]}",
+          id: "$providerCode:${s["stop"]}",
           names: {"en": s["name_en"] ?? "", "zh-Hant": s["name_tc"] ?? "", "zh-Hans": s["name_sc"] ?? ""}, // all the ?? is for in case anything changes it doesnt error and die
           lat: double.tryParse(s["lat"].toString()),
           lng: double.tryParse(s["long"].toString()),
@@ -139,7 +138,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
       // print("${providerCode}:${routeNumber}_${bound}_${serviceType}");
 
       return BusRoute(
-          id: "${providerCode}:${routeNumber}_${bound}_${serviceType}",
+          id: "$providerCode:${routeNumber}_${bound}_$serviceType",
           names: {"en": routeNumber, "zh-Hant": routeNumber},
           routeNumber: routeNumber,
           bound: bound,
@@ -151,6 +150,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
   }
 
   ///
+  @override
   Future<List<BusStop>> buildStopsWithRoutes({void Function(int done, int total)? onProgress, bool forceRefresh = false}) async {
     if (!forceRefresh) {
       final cached = await _cache.loadRawResponse(providerCode, _enrichedStopsEndpointName);
