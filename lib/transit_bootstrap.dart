@@ -10,21 +10,9 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
   final enabledCodes = await selectionService.getEnabledProviderCodes();
   final enabledProviders = availableProviders.where((p) => enabledCodes.contains(p.providerCode)).toList();
 
-  for (var i = 0; i < enabledProviders.length; i++) {
-    final provider = enabledProviders[i];
-    onProgress?.call("Fetching stops for ${provider.providerName}...", null);
-    await provider.fetchStops(forceRefresh: forceRefresh);
-    onProgress?.call("Fetching routes for ${provider.providerName}...", null);
-    await provider.fetchRoutes(forceRefresh: forceRefresh);
-
-    // add in interface for checking later if needed
-    if (provider is KmbProvider) {
-      final result = await provider.buildStopsWithRoutes(
-        forceRefresh: forceRefresh,
-        onProgress: (done, total) => onProgress?.call("Linking routes to stops for ${provider.providerName} ($done/$total)", total > 0 ? done / total : null)
-      );
-      allFailures.addAll(result.failedRouteNumbers.map((r) => "${provider.providerName} ${r}"));
-    }
+  for (final provider in enabledProviders) {
+    final result = await provider.refresh(forceRefresh: forceRefresh, onProgress: onProgress);
+    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
   }
 
   onProgress?.call("Setup complete", 1.0);
