@@ -45,7 +45,21 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Future<void> _confirmSelection() async {
+    final shouldProceed = await _showWifiReminder();
+    if (shouldProceed != true) return; // user clicked no on the popup
+
     await ProviderSelectionService().setEnabledProviderCodes(_selected.toList());
     if (mounted) Navigator.pushReplacementNamed(context, "/loading");
+  }
+
+  Future<bool?> _showWifiReminder() {
+    return showDialog(context: context, barrierDismissible: false, builder: (context) => AlertDialog(
+      title: const Text("Heads up!"),
+      content: const Text("Downloading the required data can take a while and use a fair amount of data. You may want to connect to Wi-Fi before proceeding."),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Go back")),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Continue")),
+      ],
+    ));
   }
 }

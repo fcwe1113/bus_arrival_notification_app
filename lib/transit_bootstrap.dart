@@ -3,6 +3,7 @@ import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/providers/hk/kmb_provider.dart';
 import 'package:bus_arrival_notification_app/transit/services/provider_selection_service.dart';
 
+/// runs the data refresh routine for a given provider
 Future<void> initializeTransitData({ProgressCallback? onProgress, bool forceRefresh = false}) async {
   final selectionService = ProviderSelectionService();
   final enabledCodes = await selectionService.getEnabledProviderCodes();

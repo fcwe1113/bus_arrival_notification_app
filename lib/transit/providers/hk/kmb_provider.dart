@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
+import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +20,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
   static const _stopsUrl = 'https://data.etabus.gov.hk/v1/transport/kmb/stop';
   static const _routeEndpointName = "routes";
   static const _routeUrl = "https://data.etabus.gov.hk/v1/transport/kmb/route";
+  static const _enrichedStopsEndpointName = "stops_enriched";
 
   KmbProvider(this._cache, this._scheduler);
 
@@ -116,7 +118,7 @@ class KmbProvider implements TransitProvider { // implements means to follow the
           id: "${providerCode}:${s["stop"]}",
           names: {"en": s["name_en"] ?? "", "zh-Hant": s["name_tc"] ?? "", "zh-Hans": s["name_sc"] ?? ""}, // all the ?? is for in case anything changes it doesnt error and die
           lat: double.tryParse(s["lat"].toString()),
-          lng: double.tryParse(s["lng"].toString()),
+          lng: double.tryParse(s["long"].toString()),
           providerCode: providerCode
       );
     }).toList(); // map returns an Iterable object and we need to toList
@@ -150,6 +152,11 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
   ///
   Future<List<BusStop>> buildStopsWithRoutes({void Function(int done, int total)? onProgress, bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = await _cache.loadRawResponse(providerCode, _enrichedStopsEndpointName);
+      if (cached != null) return _deserializeEnrichedStops(cached);
+    }
+
     final stops = await fetchStops();
     final routes = await fetchRoutes();
 
@@ -164,10 +171,35 @@ class KmbProvider implements TransitProvider { // implements means to follow the
       onProgress?.call(i + 1, routes.length);
     }
 
-    return stops.map((stop) {
+    final enrichedStops = stops.map((stop) {
       final rawStopId = stop.id.split(":")[1]; // strips the "kmb:" prefix
       final routeIds = routeIdsByRawStopId[rawStopId] ?? {};
       return stop.copyWith(servingRouteIds: routeIds.toList());
     }).toList();
+
+    await _cache.saveRawResponse(providerCode, _enrichedStopsEndpointName, jsonEncode(enrichedStops.map(_serializeStop).toList()));
+
+    return enrichedStops;
+  }
+
+  Map<String, dynamic> _serializeStop(BusStop stop) => {
+    "id": stop.id,
+    "names": stop.names,
+    "lat": stop.lat,
+    "lng": stop.lng,
+    "providerCode": stop.providerCode,
+    "servingRouteIds": stop.servingRouteIds
+  };
+
+  List<BusStop> _deserializeEnrichedStops(String rawJson) {
+    final List<dynamic> data = jsonDecode(rawJson);
+    return data.map((s) => BusStop(
+        id: s["id"],
+        names: Map<String, String>.from(s["names"]),
+        lat: s["lat"],
+        lng: s["lng"],
+        providerCode: s["providerCode"],
+        servingRouteIds: List<String>.from(s["servingRouteIds"]))
+    ).toList();
   }
 }
