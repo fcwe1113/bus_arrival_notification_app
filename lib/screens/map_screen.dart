@@ -41,28 +41,26 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadMapData() async {
-    final allStops = <BusStop>[];
-    final allRoutes = <BusRoute>[];
+    try {
+      final allStops = <BusStop>[];
+      final allRoutes = <BusRoute>[];
 
-    for (final provider in availableProviders) {
-      if (provider is KmbProvider) {
-        allStops.addAll((await provider.buildStopsWithRoutes()) as Iterable<BusStop>); // todo check
-      } else {
+      for (final provider in availableProviders) {
         allStops.addAll(await provider.fetchStops());
+        allRoutes.addAll(await provider.fetchRoutes());
       }
-      allRoutes.addAll(await provider.fetchRoutes());
+
+      final routesById = {for (final r in allRoutes) r.id: r};
+
+      setState(() {
+        _stops = allStops;
+        _routesById = routesById;
+        _loading = false;
+      });
+    } catch (e, stackTrace) {
+      print("Map data load failed: ${e}");
+      print(stackTrace);
     }
-
-    final routesById = {for (final r in allRoutes) r.id: r};
-    final markers = await _buildMarkers(allStops);
-
-    setState(() {
-      _stops = allStops;
-      _routesById = routesById;
-      _markers = markers;
-      _loading = false;
-
-    });
   }
 
   Future<BitmapDescriptor> _iconFor(String providerCode) async {

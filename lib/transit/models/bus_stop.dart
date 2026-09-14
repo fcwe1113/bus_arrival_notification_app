@@ -34,4 +34,22 @@ class BusStop {
   BusStop copyWith({List<String>? servingRouteIds}) {
     return BusStop(id: id, names: names, providerCode: providerCode, lat: lat, lng: lng, servingRouteIds: servingRouteIds ?? this.servingRouteIds);
   }
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "names": names,
+    "lat": lat,
+    "lng": lng,
+    "providerCode": providerCode,
+    "servingRouteIds": servingRouteIds
+  };
+
+  static BusStop fromJson(Map<String, dynamic> json) => BusStop(
+      id: json["id"],
+      names: Map<String, String>.from(json["names"]),
+      lat: json["lat"],
+      lng: json["lng"],
+      providerCode: json["providerCode"],
+      servingRouteIds: List<String>.from(json["servingRouteIds"] ?? [])
+  );
 }

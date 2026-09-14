@@ -1,32 +1,64 @@
 // service to cache the api outputs
 // transition to caching the dataclass themselves later
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+class CachedEntry<T> {
+  final T data;
+  final DateTime lastUpdated;
+  final String sourceUrl;
+
+  const CachedEntry({required this.data, required this.lastUpdated, required this.sourceUrl});
+
+  bool isStale(Duration maxAge) => DateTime.now().difference(lastUpdated) > maxAge;
+}
+
 /// Persists and retrieves raw (unparsed) API response bodies for
 /// each transit provider, keyed by [providerCode] and [endpoint].
-///
-/// Storing raw responses — rather than parsed model objects — means
-/// changes to model classes (e.g. [BusStop]) never invalidate the
-/// cache; only actual data staleness does, tracked separately by
-/// [TransitUpdateScheduler].
 class TransitCacheService {
-  Future<void> saveRawResponse(String providerCode, String endpoint, String rawJson) async {
-    final file = await _fileFor(providerCode, endpoint);
+  static const _schemaVersion = 1;
+
+  Future<void> save<T>({
+    required String providerCode,
+    required String endpointName,
+    required T data,
+    required String sourceUrl,
+    required Map<String, dynamic> Function(T) toJson,
+  }) async {
+    final file = await _fileFor(providerCode, endpointName);
     await file.create(recursive: true);
-    await file.writeAsString(rawJson);
+    final envelope = {
+      "schemaVersion": _schemaVersion,
+      "lastUpdated": DateTime.now().millisecondsSinceEpoch,
+      "sourceUrl": sourceUrl,
+      "data": toJson(data)
+    };
+    await file.writeAsString(jsonEncode(envelope));
   }
 
-  Future<String?> loadRawResponse(String providerCode, String endpoint) async {
-    final file = await _fileFor(providerCode, endpoint);
+  Future<CachedEntry<T>?> load<T>({
+    required String providerCode,
+    required String endpointName,
+    required T Function(Map<String, dynamic>) fromJson
+  }) async {
+    final file = await _fileFor(providerCode, endpointName);
     if (!await file.exists()) return null;
-    return file.readAsString();
+
+    final envelope = jsonDecode(await file.readAsString());
+    if (envelope["schemaVersion"] != _schemaVersion) return null;
+
+    return CachedEntry(
+        data: fromJson(envelope["data"]),
+        lastUpdated: DateTime.fromMillisecondsSinceEpoch(envelope["lastUpdated"]),
+        sourceUrl: envelope["sourceUrl"]
+    );
   }
 
   Future<File> _fileFor(String providerCode, String endpoint) async { // the code that enforces file structure
     final dir = await getApplicationDocumentsDirectory(); // dir.path likely /data/data/com.fcwe1113.bus_arrival_notification_app/app_flutter
-    return File("${dir.path}/transit_cache/$providerCode/$endpoint.json");
+    return File("${dir.path}/transit_cache/${providerCode}/${endpoint}.json");
   }
 }

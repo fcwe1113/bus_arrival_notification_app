@@ -3,6 +3,8 @@
 
 import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/enrichment_result.dart';
+import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
+import 'package:bus_arrival_notification_app/transit/providers/refresh_result.dart';
 
 import '../models/bus_route.dart';
 
@@ -14,6 +16,8 @@ abstract class TransitProvider {
   Future<List<BusStop>> fetchStops({bool forceRefresh});
   Future<List<BusRoute>> fetchRoutes({bool forceRefresh});
 
-  Future<EnrichmentResult> buildStopsWithRoutes();
+  Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress});
   // Future<List<StopPrediciton>> fetchPredicitons(String stopID);
+
+  Future<bool> isStale();
 }

@@ -2,6 +2,7 @@ import 'package:bus_arrival_notification_app/provider_registry.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/providers/hk/kmb_provider.dart';
 import 'package:bus_arrival_notification_app/transit/services/provider_selection_service.dart';
+import 'package:flutter/cupertino.dart';
 
 /// runs the data refresh routine for a given provider
 Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool forceRefresh = false}) async {
@@ -10,23 +11,33 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
   final enabledCodes = await selectionService.getEnabledProviderCodes();
   final enabledProviders = availableProviders.where((p) => enabledCodes.contains(p.providerCode)).toList();
 
-  for (var i = 0; i < enabledProviders.length; i++) {
-    final provider = enabledProviders[i];
-    onProgress?.call("Fetching stops for ${provider.providerName}...", null);
-    await provider.fetchStops(forceRefresh: forceRefresh);
-    onProgress?.call("Fetching routes for ${provider.providerName}...", null);
-    await provider.fetchRoutes(forceRefresh: forceRefresh);
-
-    // add in interface for checking later if needed
-    if (provider is KmbProvider) {
-      final result = await provider.buildStopsWithRoutes(
-        forceRefresh: forceRefresh,
-        onProgress: (done, total) => onProgress?.call("Linking routes to stops for ${provider.providerName} ($done/$total)", total > 0 ? done / total : null)
-      );
-      allFailures.addAll(result.failedRouteNumbers.map((r) => "${provider.providerName} ${r}"));
-    }
+  for (final provider in enabledProviders) {
+    final result = await provider.refresh(forceRefresh: forceRefresh, onProgress: onProgress);
+    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
   }
 
   onProgress?.call("Setup complete", 1.0);
+  return allFailures;
+}
+
+Future<List<String>> refreshStaleProviders({ProgressCallback? onProgress, bool forceRefresh = false}) async {
+  final selectionService = ProviderSelectionService();
+  final enabledCodes = await selectionService.getEnabledProviderCodes();
+  final enabledProviders = availableProviders.where((p) => enabledCodes.contains(p.providerCode)).toList();
+
+  final allFailures = <String>[];
+
+  for (final provider in enabledProviders) {
+    final stale = await provider.isStale();
+    if (!stale) {
+      onProgress?.call("${provider.providerName} is up to date", null);
+      continue;
+    }
+
+    final result = await provider.refresh(onProgress: onProgress);
+    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
+  }
+
+  onProgress?.call("refresh check complete", 1.0);
   return allFailures;
 }
