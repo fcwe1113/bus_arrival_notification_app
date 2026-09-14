@@ -18,4 +18,6 @@ abstract class TransitProvider {
 
   Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress});
   // Future<List<StopPrediciton>> fetchPredicitons(String stopID);
+
+  Future<bool> isStale();
 }

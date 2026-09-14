@@ -166,4 +166,15 @@ class KmbProvider implements TransitProvider { // implements means to follow the
     final data = decoded["data"] as List;
     return data.map((s) => s["stop"] as String).toList();
   }
+
+  @override
+  Future<bool> isStale() async {
+    final cached = await _apiCaller.peek<List<BusStop>>(
+      providerCode: providerCode,
+      endpointName: _stopsEndpointName,
+      fromJson: (json) => (json["items"] as List).map((s) => BusStop.fromJson(s)).toList()
+    );
+    if (cached == null) return true;
+    return cached.isStale(const Duration(days: 7));
+  }
 }

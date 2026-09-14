@@ -127,4 +127,12 @@ class ApiCaller {
   }) async {
     return _cache.save(providerCode: providerCode, endpointName: endpointName, data: data, sourceUrl: sourceUrl, toJson: toJson);
   }
+
+  Future<CachedEntry<T>?> peek<T>({
+    required String providerCode,
+    required String endpointName,
+    required T Function(Map<String, dynamic>) fromJson
+  }) async {
+    return _cache.load<T>(providerCode: providerCode, endpointName: endpointName, fromJson: fromJson);
+  }
 }

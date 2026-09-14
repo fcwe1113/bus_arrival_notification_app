@@ -1,4 +1,5 @@
 import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
+import 'package:bus_arrival_notification_app/transit_bootstrap.dart';
 import 'package:flutter/material.dart';
 
 /// this is the actual menu object, with each menu entry
@@ -23,9 +24,13 @@ class AppDrawer extends StatelessWidget { // stateless bc the menu entrys are se
               Navigator.pop(context);
               Navigator.pushReplacementNamed(context, "/map");
             },),
+            ListTile(leading: const Icon(Icons.download), title: const Text("Reload Data"), onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (cocntext) => const LoadingScreen(operation: initializeTransitData,forceRefresh: true)));
+            },),
             ListTile(leading: const Icon(Icons.refresh), title: const Text("Refresh Data"), onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (cocntext) => const LoadingScreen(forceRefresh: true)));
+              Navigator.push(context, MaterialPageRoute(builder: (cocntext) => const LoadingScreen(operation: refreshStaleProviders,)));
             },),
             ListTile(leading: const Icon(Icons.settings), title: const Text("Settings"), onTap: () => Navigator.pop(context),),
           ],
