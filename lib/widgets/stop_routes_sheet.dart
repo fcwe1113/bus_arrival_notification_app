@@ -19,7 +19,7 @@ class StopRoutesSheet extends StatelessWidget{
         Text(stop.names["en"] ?? stop.id, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
         const SizedBox(height: 12,),
         if (routes.isNotEmpty) ...[
-          SizedBox(height: 32, child: ListView(
+          SizedBox(height: 28, child: ListView(
             scrollDirection: Axis.horizontal,
             children: routes.map((route) => Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -59,9 +59,10 @@ class _RoutePill extends StatelessWidget {
     return Container(
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(color: colours.iconColour, borderRadius: BorderRadius.circular(14)),
-      // alignment: Alignment.center,
-      child: Text(route.routeNumber, style: TextStyle(color: colours.textColour, fontWeight: FontWeight.bold, fontSize: 13),),
+      decoration: BoxDecoration(color: colours.iconColour, borderRadius: BorderRadius.circular(11)),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(route.routeNumber, style: TextStyle(color: colours.textColour, fontWeight: FontWeight.bold, fontSize: 13),)
+      ],),
     );
   }
 }
