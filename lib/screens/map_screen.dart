@@ -1,6 +1,7 @@
+import 'dart:math';
+
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
-import 'package:bus_arrival_notification_app/transit/providers/hk/kmb_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -22,6 +23,8 @@ class MapScreen extends StatefulWidget { // statefulwidgets are widgets that can
 class _MapScreenState extends State<MapScreen> {
   // here State<MapScreen> DOES NOT mean a state object of a mapscreen type ala c#
   // instead it is extending the underlying State<T> and hooking up this state to the mapscreen widget
+
+  EdgeInsets _mapPadding = EdgeInsets.zero;
 
   GoogleMapController? _mapController;
   static const mapsApiKey = String.fromEnvironment('MAPS_API_KEY');
@@ -83,7 +86,32 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onStopTapped(BusStop stop) async {
     final servingRoutes = stop.servingRouteIds.map((id) => _routesById[id]).whereType<BusRoute>().toList();
-    showModalBottomSheet(context: context, builder: (context) => StopRoutesSheet(stop: stop, routes: servingRoutes));
+
+    setState(() {
+      _mapPadding = EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5);
+    });
+
+    const zoom = 19.0;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final sheetHeightFraction = 0.5;
+    final metersPerPixel = 156543.03392 * cos(stop.lat! * pi / 180) / pow(2, zoom);
+    final latOffset = ((screenHeight * sheetHeightFraction / 2) * metersPerPixel) / 111320;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat! - latOffset, stop.lng!), zoom));
+    });
+
+    showModalBottomSheet(
+        context: context,
+        // backgroundColor: Colors.transparent,
+        barrierColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => StopRoutesSheet(stop: stop, routes: servingRoutes)
+    ).whenComplete(() {
+      setState(() {
+        _mapPadding = EdgeInsets.zero;
+      });
+    });
   }
 
   Future<void> _updateVisibleMarkers() async {
@@ -120,7 +148,7 @@ class _MapScreenState extends State<MapScreen> {
     return AppShell(
       title: "Map",
       body: GoogleMap(
-        // key: UniqueKey(),
+        padding: _mapPadding, // not working for some reason
         initialCameraPosition: const CameraPosition(target: LatLng(22.3193, 114.1694), zoom: 12),
         onMapCreated: (controller) {
           _mapController = controller;
