@@ -11,24 +11,26 @@ class StopRoutesSheet extends StatelessWidget{
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(stop.names["en"] ?? stop.id, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold,)),
-        const SizedBox(height: 12),
-        if (routes.isEmpty)
-          const Text('No routes found for this stop.')
-        else
-          ...routes.map((route) => ListTile(
-            title: Text(route.routeNumber),
-            subtitle: Text(route.destinationText['en'] ?? ''),
-            onTap: () {
-              Navigator.pop(context);
-              // future: draw this route's polyline on the map
-            },
-          )),
-      ],
-    ),),);
+    return SafeArea(child: Container(
+      height: MediaQuery.of(context).size.height * 0.5,
+      padding: EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(stop.names["en"] ?? stop.id, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+        const SizedBox(height: 12,),
+        Expanded(child: Scrollbar(child: ListView(children: [
+          if (routes.isEmpty)
+            const Text("No routes found for this stop.")
+          else
+            ...routes.map((route) => ListTile(
+              title: Text(route.routeNumber),
+              subtitle: Text(route.destinationText["en"] ?? ""),
+              onTap: () {
+                Navigator.pop(context);
+                // add route map display here later
+              },
+            ))
+        ],)))
+      ],)
+    ));
   }
 }
