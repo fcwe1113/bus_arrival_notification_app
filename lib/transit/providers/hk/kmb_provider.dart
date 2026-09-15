@@ -1,14 +1,14 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
+import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
 import 'package:bus_arrival_notification_app/transit/providers/refresh_result.dart';
 import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
-import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
 
 import '../../models/bus_stop.dart';
-import '../../models/enrichment_result.dart';
 import '../../progress_callback.dart';
 import '../transit_provider.dart';
 
@@ -16,7 +16,7 @@ import '../transit_provider.dart';
 /// includes all KMB related data and API handling
 ///
 /// KMB offers a full stop list and full route list API endpoint so we will be using that
-class KmbProvider implements TransitProvider { // implements means to follow the provided interface, not extending bc theres nothing to build upon
+class KmbProvider extends TransitProvider { // implements means to follow the provided interface, not extending bc theres nothing to build upon
   final ApiCaller _apiCaller;
   static const _stopsEndpointName = "stops"; // static meaning var belongs to class
   static const _stopsUrl = 'https://data.etabus.gov.hk/v1/transport/kmb/stop';
@@ -34,6 +34,26 @@ class KmbProvider implements TransitProvider { // implements means to follow the
 
   @override
   String get IconAsset => "assets/icons/kmb.png";
+
+  @override
+  Color get defaultIconColor => const Color(0xDAFF291C);
+
+  @override
+  Color get defaultTextColor => Colors.white;
+
+  @override
+  RouteColourScheme coloursForRoute(BusRoute route) {
+
+    bool _isAirportRoute(BusRoute route) {
+      return route.routeNumber.startsWith("A") || route.routeNumber.startsWith("E") || route.routeNumber.startsWith("NA"); // todo define NA and N(E)
+    }
+
+    if (_isAirportRoute(route)) {
+      return const RouteColourScheme(iconColour: Colors.orange, textColour: Colors.white);
+    }
+
+    return super.coloursForRoute(route);
+  }
 
   /// Fetches the full KMB stop list, using cached data when available.
   ///
