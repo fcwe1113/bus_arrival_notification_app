@@ -14,4 +14,12 @@ final Map<String, List<TransitProvider>> providersByLocale = {
   // 'nyc': [MtaProvider()],  // future
 };
 
+const Map<String, String> localeDisplayNames = {
+  "hk": "Hong Kong"
+};
+
 List<TransitProvider> get availableProviders => providersByLocale.values.expand((providers) => providers).toList();
+
+List<dynamic> providersForLocales(List<String> locales) { // todo may fix later
+  return locales.expand((locale) => providersByLocale[locale] ?? []).toList();
+}
