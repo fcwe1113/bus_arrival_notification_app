@@ -2,15 +2,23 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class GtfsDatabase {
-  static final GtfsDatabase instance = GtfsDatabase._init();
-  static Database? _database;
+  static final Map<String, GtfsDatabase> _instances = {};
+  static final Map<String, Database?> _databases = {};
+  final String locale;
 
-  GtfsDatabase._init();
+  GtfsDatabase._(this.locale);
+
+  factory GtfsDatabase.forLocale(String locale) {
+    return _instances.putIfAbsent(locale, () => GtfsDatabase._(locale));
+  }
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB("gtfs_schedule.db");
-    return _database!;
+    if (_databases.containsKey(locale) && _databases[locale]!.isOpen){
+      return _databases[locale]!;
+    }
+    final db = await _initDB("gtfs_${locale}.db");
+    _databases[locale] = db;
+    return db;
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -38,7 +46,7 @@ class GtfsDatabase {
   String _val(List<dynamic> row, int index) => row.length > index ? row[index].toString() : "";
 
   Future<void> batchInsertRoutes(List<List<dynamic>> rows) async {
-    final db = await instance.database;
+    final db = await database;
     await db.transaction((txn) async {
       final batch = txn.batch();
       for (var row in rows.skip(1)){
@@ -52,7 +60,7 @@ class GtfsDatabase {
   }
 
   Future<void> batchInsertTrips(List<List<dynamic>> rows) async {
-    final db = await instance.database;
+    final db = await database;
     await db.transaction((txn) async {
       final batch = txn.batch();
       for (var row in rows.skip(1)){
@@ -68,7 +76,7 @@ class GtfsDatabase {
   }
 
   Future<void> batchInsertCalendar(List<List<dynamic>> rows) async {
-    final db = await instance.database;
+    final db = await database;
     await db.transaction((txn) async {
       final batch = txn.batch();
       for (var row in rows.skip(1)){
@@ -90,8 +98,8 @@ class GtfsDatabase {
   }
 
   Future<void> batchInsertStopTimes(List<List<dynamic>> rows) async {
-    final db = await instance.database;
-    await db?.transaction((txn) async {
+    final db = await database;
+    await db.transaction((txn) async {
       final batch = txn.batch();
       for (var row in rows.skip(1)){
         batch.insert("gtfs_stop_times", {
@@ -107,7 +115,7 @@ class GtfsDatabase {
   }
 
   Future<List<String>?> getScheduledArrivals({required String stopId, required String routeShortName, required DateTime targetTime}) async {
-    final db = await instance.database;
+    final db = await database;
 
     final weekDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     final currentDayColumn = weekDays[targetTime.weekday - 1];
@@ -115,7 +123,7 @@ class GtfsDatabase {
     final timeStr = "${targetTime.hour.toString().padLeft(2, "0")}:${targetTime.minute.toString().padLeft(2, "0")}:${targetTime.second.toString().padLeft(2, "0")}";
     final dateStr = "${targetTime.year}${targetTime.month.toString().padLeft(2, "0")}${targetTime.day.toString().padLeft(2, "0")}";
 
-    final List<Map<String, dynamic>>? results = await db?.rawQuery('''
+    final List<Map<String, dynamic>>? results = await db.rawQuery('''
     SELECT st.arrival_time
     from gtfs_stop_times st
     INNER JOIN gtfs_trips t ON st.trip_id = t.trip_id
@@ -124,7 +132,7 @@ class GtfsDatabase {
     WHERE st.stop_id = ?
       AND r.route_short_name = ?
       AND st.arrival_time >= ?
-      AND c.$currentDayColumn = 1
+      AND c.${currentDayColumn} = 1
       AND c.start_date <= ?
       AND c.end_date >= ?
     ORDER BY st.arrival_time ASC
