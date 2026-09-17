@@ -141,4 +141,14 @@ class GtfsDatabase {
 
     return results?.map((r) => r["arrival_time"] as String).toList();
   }
+
+  Future<void> clearAllTables() async {
+    final db = await database;
+    await db.transaction(((txn) async {
+      await txn.delete("gtfs_routes");
+      await txn.delete("gtfs_trips");
+      await txn.delete("gtfs_calendar");
+      await txn.delete("gtfs_stop_times");
+    }));
+  }
 }

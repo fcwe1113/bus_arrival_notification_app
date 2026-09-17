@@ -1,4 +1,5 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
+import 'package:bus_arrival_notification_app/transit/locale_gtfs_registry.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
 
@@ -6,8 +7,15 @@ import 'package:bus_arrival_notification_app/transit/services/locale_selection_s
 Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool forceRefresh = false}) async {
   final allFailures = <String>[];
   final selectionService = LocaleSelectionService();
-  final enabledCodes = await selectionService.getEnabledLocales();
-  final enabledProviders = availableProviders.where((p) => enabledCodes.contains(p.providerCode)).toList();
+  final enabledLocales = await selectionService.getEnabledLocales();
+  final enabledProviders = availableProviders.where((p) => enabledLocales.contains(p.providerCode)).toList();
+  final gtfsProviders = LocaleGtfsRegistry.getProvidersForLocale(enabledLocales);
+
+  for (final provider in gtfsProviders) {
+    if (await provider.checkIsStale()) {
+      await provider.syncFeed(onProgress: onProgress);
+    }
+  }
 
   for (final provider in enabledProviders) {
     final result = await provider.refresh(forceRefresh: forceRefresh, onProgress: onProgress);
@@ -21,9 +29,16 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
 Future<List<String>> refreshStaleProviders({ProgressCallback? onProgress, bool forceRefresh = false}) async {
   final selectionService = LocaleSelectionService();
   final enabledLocales = await selectionService.getEnabledLocales();
+  final gtfsProviders = LocaleGtfsRegistry.getProvidersForLocale(enabledLocales);
   final enabledProviders = providersForLocales(enabledLocales);
 
   final allFailures = <String>[];
+
+  for (final provider in gtfsProviders) {
+    if (await provider.checkIsStale()) {
+      await provider.syncFeed(onProgress: onProgress);
+    }
+  }
 
   for (final provider in enabledProviders) {
     final stale = forceRefresh || await provider.isStale();
