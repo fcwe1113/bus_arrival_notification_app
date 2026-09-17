@@ -1,6 +1,4 @@
-import 'package:bus_arrival_notification_app/transit/providers/transit_provider.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
-import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:http/http.dart' as http;
 
 class BatchCallItem<K, T> {

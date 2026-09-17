@@ -3,14 +3,14 @@ import 'dart:ui';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
-import 'package:bus_arrival_notification_app/transit/providers/refresh_result.dart';
+import 'package:bus_arrival_notification_app/transit/refresh_result.dart';
 import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:flutter/material.dart';
 
-import '../../models/bus_stop.dart';
-import '../../progress_callback.dart';
-import '../transit_provider.dart';
+import '../../../models/bus_stop.dart';
+import '../../../progress_callback.dart';
+import '../../../transit_provider.dart';
 
 /// KMB's implementation of transit provider
 /// includes all KMB related data and API handling
