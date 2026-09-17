@@ -1,8 +1,12 @@
-import 'package:archive/archive.dart';
+import 'dart:io';
+
+import 'package:archive/archive_io.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
+import 'package:bus_arrival_notification_app/transit/services/csv_stream_parser.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:csv/csv.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 abstract class GtfsSyncProvider {
   String get locale;
@@ -19,32 +23,42 @@ class GtfsSyncService {
     _db = GtfsDatabase.forLocale(locale);
   }
 
-  Future<void> parseAndStoreGtfsArchive(Archive archive, {ProgressCallback? onProgress}) async {
-    final validFiles = archive.where((f) => f.isFile).toList();
+  Future<void> parseAndStoreGtfsArchive(File zipFile, {ProgressCallback? onProgress}) async { // todo
+    final requiredFiles = ["routes.txt", "trips.txt", "calendar.txt", "stop_times.txt"]; // only read required files
+    final inputStream = InputFileStream(zipFile.path);
+    final archive = ZipDecoder().decodeStream(inputStream);
+
+    final validFiles = archive.files.where((f) => requiredFiles.contains(p.basename(f.name))).toList();
     final totalFiles = validFiles.length;
     int processedCount = 0;
 
-    for (final file in archive) {
-      if (!file.isFile) continue;
+    final tempDir = await getApplicationDocumentsDirectory();
+
+    for (final file in validFiles) {
       final fileName = p.basename(file.name);
-      final stepProgress = 0.5 + (0.45 * (processedCount / totalFiles));
+      final stepProgress = processedCount / totalFiles;
+      onProgress?.call("Extracting ${fileName}...", stepProgress);
+
+      final extractedPath = "${tempDir.path}/${fileName}";
+      final outputStream = OutputFileStream(extractedPath);
+      file.writeContent(outputStream);
+      await outputStream.close();
+
       onProgress?.call("Parsing ${fileName}...", stepProgress);
 
-      final content = String.fromCharCodes(file.content as List<int>);
-      final csvData = CsvDecoder().convert(content);
-
+      final extractedFile = File(extractedPath);
       switch (fileName) {
         case "routes.txt":
-          await _db.batchInsertRoutes(csvData);
+          await streamParseAndInsert(extractedFile, _db.batchInsertRoutes);
           break;
         case "trips.txt":
-          await _db.batchInsertTrips(csvData);
+          await streamParseAndInsert(extractedFile, _db.batchInsertTrips);
           break;
         case "calendar.txt":
-          await _db.batchInsertCalendar(csvData);
+          await streamParseAndInsert(extractedFile, _db.batchInsertCalendar);
           break;
         case "stop_times.txt":
-          await _db.batchInsertStopTimes(csvData);
+          await streamParseAndInsert(extractedFile, _db.batchInsertStopTimes);
           break;
       }
       processedCount++;

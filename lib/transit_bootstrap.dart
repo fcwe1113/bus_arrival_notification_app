@@ -1,5 +1,5 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/locale_gtfs_registry.dart';
+import 'package:bus_arrival_notification_app/locale_gtfs_registry.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
 
@@ -12,9 +12,7 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
   final gtfsProviders = LocaleGtfsRegistry.getProvidersForLocale(enabledLocales);
 
   for (final provider in gtfsProviders) {
-    if (await provider.checkIsStale()) {
-      await provider.syncFeed(onProgress: onProgress);
-    }
+    await provider.syncFeed(onProgress: onProgress);
   }
 
   for (final provider in enabledProviders) {

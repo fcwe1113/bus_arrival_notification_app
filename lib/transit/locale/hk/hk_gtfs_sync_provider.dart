@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:archive/archive.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_sync_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HkGtfsSyncProvider implements GtfsSyncProvider{
@@ -10,7 +13,7 @@ class HkGtfsSyncProvider implements GtfsSyncProvider{
   final String locale = "hk";
 
   @override
-  final String feedUrl = "https://static.data.gov.hk/td/pt-headway/gtfs.zip";
+  final String feedUrl = "https://static.data.gov.hk/td/pt-headway-en/gtfs.zip";
 
   static const Duration ttlThreshhold = Duration(days: 7);
 
@@ -48,17 +51,33 @@ class HkGtfsSyncProvider implements GtfsSyncProvider{
 
   @override
   Future<void> syncFeed({ProgressCallback? onProgress}) async {
-    final response = await http.get(Uri.parse(feedUrl));
+    final dir = await getApplicationDocumentsDirectory();
+    final zipFile = File("${dir.path}/gtfs_download.zip");
+    final request = http.Request("GET", Uri.parse(feedUrl));
+    final client = http.Client();
+    final http.StreamedResponse response;
+    try {
+      response = await client.send(request);
+    } catch (e) {
+      client.close();
+      rethrow;
+    }
+
     if (response.statusCode != 200) {
+      client.close();
       throw Exception("failed to download GTFS feed. HTTP ${response.statusCode}");
     }
 
-    final archive = ZipDecoder().decodeBytes(response.bodyBytes);
+    final sink = zipFile.openWrite();
+    await response.stream.pipe(sink);
+    await sink.close();
+    client.close();
+
     final db = GtfsDatabase.forLocale(locale);
     await db.clearAllTables();
 
     final syncService = GtfsSyncService(locale: locale);
-    await syncService.parseAndStoreGtfsArchive(archive);
+    await syncService.parseAndStoreGtfsArchive(zipFile);
 
     final prefs = await SharedPreferences.getInstance();
     final etag = response.headers["etag"];

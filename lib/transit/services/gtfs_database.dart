@@ -1,3 +1,4 @@
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -16,7 +17,8 @@ class GtfsDatabase {
     if (_databases.containsKey(locale) && _databases[locale]!.isOpen){
       return _databases[locale]!;
     }
-    final db = await _initDB("gtfs_${locale}.db");
+    final dir = await getApplicationDocumentsDirectory();
+    final db = await _initDB("${dir.path}gtfs/${locale}.db");
     _databases[locale] = db;
     return db;
   }
