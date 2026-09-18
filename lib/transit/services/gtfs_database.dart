@@ -32,14 +32,66 @@ class GtfsDatabase {
   }
 
   Future<void> _createDB(Database db, int version) async {
-    await db.execute('''CREATE TABLE gtfs_routes (route_id TEXT PRIMARY KEY, route_short_name TEXT NOT NULL)''');
+    await db.execute('''CREATE TABLE gtfs_routes (
+    route_id TEXT PRIMARY KEY, 
+    route_short_name TEXT NOT NULL
+    )''');
+
     await db.execute('''CREATE TABLE gtfs_trips (
-    trip_id TEXT PRIMARY KEY, route_id TEXT NOT NULL, service_id TEXT NOT NULL, direction_id INTEGER)''');
-    await db.execute('''CREATE TABLE gtfs_calendar (service_id TEXT PRIMARY KEY, 
-    monday INTEGER, tuesday INTEGER, wednesday INTEGER, thursday INTEGER, friday INTEGER, saturday INTEGER, sunday INTEGER,
-    start_date TEXT, end_date TEXT)''');
-    await db.execute('''CREATE TABLE gtfs_stop_times (trip_id TEXT NOT NULL, 
-    arrival_time TEXT NOT NULL, departure_time TEXT NOT NULL, stop_id TEXT NOT NULL, stop_sequence INTEGER NOT NULL)''');
+    trip_id TEXT PRIMARY KEY, 
+    route_id TEXT NOT NULL, 
+    service_id TEXT NOT NULL, 
+    direction_id INTEGER
+    )''');
+
+    await db.execute('''CREATE TABLE gtfs_calendar (
+    service_id TEXT PRIMARY KEY, 
+    monday INTEGER, 
+    tuesday INTEGER, 
+    wednesday INTEGER, 
+    thursday INTEGER, 
+    friday INTEGER, 
+    saturday INTEGER, 
+    sunday INTEGER,
+    start_date TEXT, 
+    end_date TEXT
+    )''');
+
+    await db.execute('''CREATE TABLE gtfs_stop_times (
+    trip_id TEXT NOT NULL, 
+    arrival_time TEXT NOT NULL, 
+    departure_time TEXT NOT NULL, 
+    stop_id TEXT NOT NULL, 
+    stop_sequence INTEGER NOT NULL
+    )''');
+
+    await db.execute('''CREATE TABLE gtfs_stops (
+    stop_id TEXT PRIMARY KEY, 
+    stop_name TEXT NOT NULL, 
+    stop_lat REAL NOT NULL, 
+    stop_lon REAL NOT NULL
+    )''');
+
+    await db.execute('''CREATE TEBLE operator_stops (
+    operator_stop_id TEXT PRIMARY KEY, 
+    provider_code TEXT NOT NULL, 
+    lat REAL, 
+    lng REAL
+    )''');
+
+    await db.execute('''CREATE TABLE operator_routes (
+    operator_route_id TEXT PRIMARY KEY, 
+    provider_code TEXT NOT NULL, 
+    bound TEXT, 
+    origin_text TEXT NOT NULL, 
+    destination_text TEXT NOT NULL
+    )''');
+    
+    await db.execute('''CREATE TABLE stop_mapping (
+    operator_stop_id TEXT PRIMARY KEY REFERENCES operator_stops(operator_stop_id),
+    gtfs_stop_id TEXT NOT NULL REFERENCES gtfs_stops(stop_id),
+    match_confidence REAL
+    )''');
 
     await db.execute('''CREATE INDEX idx_routes_name ON gtfs_routes(route_short_name)''');
     await db.execute('''CREATE INDEX idx_trips_route_service ON gtfs_trips(route_id, service_id)''');
