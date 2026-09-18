@@ -1,4 +1,5 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
+import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 
 import '../transit/models/bus_route.dart';
@@ -27,20 +28,47 @@ class StopRoutesSheet extends StatelessWidget{
             ).toList(),
           ),), const SizedBox(height: 12,)
         ],
-        Expanded(child: Scrollbar(child: ListView(children: [
-          if (routes.isEmpty)
-            const Text("No routes found for this stop.")
-          else
-            ...routes.map((route) => ListTile( // todo replace with live arrivals later
-                leading: _RoutePill(route: route),
-                title: Text(route.destinationText["en"] ?? ""),
-                subtitle: Text(route.destinationText["en"] ?? ""),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              )
-            )
-        ],)))
+        Expanded(
+          child: FutureBuilder(
+            future: GtfsDatabase.forLocale("hk").getUpcomingDepartures(stop.id), // todo fix test harcode later
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(),);
+              }
+              if (snapshot.hasError) {
+                return Text("Error loading schedule: ${snapshot.error}");
+              }
+              final departures = snapshot.data ?? [];
+              if (departures.isEmpty) {
+                return Text("no scheduled departures found");
+              }
+              return Scrollbar(child: ListView(children: departures.map((d) {
+                final mins = d.minutesFromNow;
+                final label = mins <= 0 ? "Due" : "${mins} min";
+                return ListTile(
+                  title: Text(d.routeShortName),
+                  subtitle: Text("Scheduled"),
+                  trailing: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),)
+                );
+              }
+              ).toList()));
+            }
+          ),
+        )
+        // Expanded(child: Scrollbar(child: ListView(children: [
+        //   if (routes.isEmpty)
+        //     const Text("No routes found for this stop.")
+        //   else
+        //     ...routes.map((route) => ListTile( // todo replace with live arrivals later
+        //         leading: _RoutePill(route: route),
+        //         title: Text(route.destinationText["en"] ?? ""),
+        //         subtitle: Text(route.destinationText["en"] ?? ""),
+        //         onTap: () {
+        //           Navigator.pop(context);
+        //         },
+        //       )
+        //     )
+        // ],)))
       ],)
     ));
   }

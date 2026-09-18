@@ -1,3 +1,4 @@
+import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -18,7 +19,7 @@ class GtfsDatabase {
       return _databases[locale]!;
     }
     final dir = await getApplicationDocumentsDirectory();
-    final db = await _initDB("${dir.path}gtfs/${locale}.db");
+    final db = await _initDB("${dir.path}/gtfs/${locale}.db");
     _databases[locale] = db;
     return db;
   }
@@ -116,32 +117,36 @@ class GtfsDatabase {
     });
   }
 
-  Future<List<String>?> getScheduledArrivals({required String stopId, required String routeShortName, required DateTime targetTime}) async {
+  Future<List<ScheduledDeparture>> getUpcomingDepartures(String stopId, {int limit = 5}) async {
     final db = await database;
+    final now = DateTime.now();
 
     final weekDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    final currentDayColumn = weekDays[targetTime.weekday - 1];
+    final currentDayColumn = weekDays[now.weekday - 1];
 
-    final timeStr = "${targetTime.hour.toString().padLeft(2, "0")}:${targetTime.minute.toString().padLeft(2, "0")}:${targetTime.second.toString().padLeft(2, "0")}";
-    final dateStr = "${targetTime.year}${targetTime.month.toString().padLeft(2, "0")}${targetTime.day.toString().padLeft(2, "0")}";
+    final timeStr = "${now.hour.toString().padLeft(2, "0")}:${now.minute.toString().padLeft(2, "0")}:${now.second.toString().padLeft(2, "0")}";
+    final dateStr = "${now.year}${now.month.toString().padLeft(2, "0")}${now.day.toString().padLeft(2, "0")}";
 
-    final List<Map<String, dynamic>>? results = await db.rawQuery('''
-    SELECT st.arrival_time
+    final List<Map<String, dynamic>> rows = await db.rawQuery('''
+    SELECT r.route_short_name, st.arrival_time, t.direction_id
     from gtfs_stop_times st
     INNER JOIN gtfs_trips t ON st.trip_id = t.trip_id
     INNER JOIN gtfs_routes r ON t.route_id = r.route_id
     INNER JOIN gtfs_calendar c ON t.service_id = c.service_id
     WHERE st.stop_id = ?
-      AND r.route_short_name = ?
-      AND st.arrival_time >= ?
+      AND st.arrival_time > ?
       AND c.${currentDayColumn} = 1
       AND c.start_date <= ?
       AND c.end_date >= ?
     ORDER BY st.arrival_time ASC
-    LIMIT 5
-    ''', [stopId, routeShortName, timeStr, dateStr, dateStr]);
+    LIMIT ?
+    ''', [stopId, timeStr, dateStr, dateStr, limit]);
 
-    return results?.map((r) => r["arrival_time"] as String).toList();
+    return rows.map((row) => ScheduledDeparture(
+        routeShortName: row["route_short_name"] as String,
+        arrivalTime: row["arrival_time"] as String,
+        directionId: row["direction_id"] as int?
+    )).toList();
   }
 
   Future<void> clearAllTables() async {
