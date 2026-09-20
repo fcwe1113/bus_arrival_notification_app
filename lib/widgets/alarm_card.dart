@@ -28,8 +28,8 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
                     child: Column( // column inside row inside column
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(alarm.routeName),
-                        Text(alarm.stopId),
+                        Text(alarm.operatorRouteId),
+                        Text(alarm.gtfsStopId),
                         Text("${alarm.nextArrival}")
                       ],
                     ),

@@ -1,6 +1,7 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
 import 'package:bus_arrival_notification_app/locale_gtfs_registry.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
+import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
 
 /// runs the data refresh routine for a given provider
@@ -8,7 +9,7 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
   final allFailures = <String>[];
   final selectionService = LocaleSelectionService();
   final enabledLocales = await selectionService.getEnabledLocales();
-  final enabledProviders = availableProviders.where((p) => enabledLocales.contains(p.providerCode)).toList();
+  final enabledProviders = providersForLocales(enabledLocales); // todo fix this line resulting in zero enabled providers
   final gtfsProviders = LocaleGtfsRegistry.getProvidersForLocale(enabledLocales);
 
   for (final provider in gtfsProviders) {
@@ -18,6 +19,11 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
   for (final provider in enabledProviders) {
     final result = await provider.refresh(forceRefresh: forceRefresh, onProgress: onProgress);
     allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
+  }
+
+  for (final locale in enabledLocales) {
+    onProgress?.call("Matching stops for ${locale}...", null);
+    await GtfsDatabase.forLocale(locale).matchOperatorStopsToGtfs();
   }
 
   onProgress?.call("Setup complete", 1.0);
@@ -47,6 +53,11 @@ Future<List<String>> refreshStaleProviders({ProgressCallback? onProgress, bool f
 
     final result = await provider.refresh(onProgress: onProgress);
     allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
+  }
+
+  for (final locale in enabledLocales) {
+    onProgress?.call("Matching stops for ${locale}...", null);
+    await GtfsDatabase.forLocale(locale).matchOperatorStopsToGtfs();
   }
 
   onProgress?.call("refresh check complete", 1.0);

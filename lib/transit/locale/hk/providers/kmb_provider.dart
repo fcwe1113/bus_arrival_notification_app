@@ -5,6 +5,7 @@ import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
 import 'package:bus_arrival_notification_app/transit/refresh_result.dart';
 import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
+import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:flutter/material.dart';
 
@@ -20,9 +21,8 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
   final ApiCaller _apiCaller;
   static const _stopsEndpointName = "stops"; // static meaning var belongs to class
   static const _stopsUrl = 'https://data.etabus.gov.hk/v1/transport/kmb/stop';
-  static const _routeEndpointName = "routes";
-  static const _routeUrl = "https://data.etabus.gov.hk/v1/transport/kmb/route";
-  static const _enrichedStopsEndpointName = "stops_enriched";
+  static const _routesEndpointName = "routes";
+  static const _routesUrl = "https://data.etabus.gov.hk/v1/transport/kmb/route";
 
   KmbProvider(this._apiCaller);
 
@@ -32,8 +32,8 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
   @override
   String get providerName => "KMB";
 
-  @override
-  String get IconAsset => "assets/icons/kmb.png";
+  // @override
+  // String get IconAsset => "assets/icons/kmb.png";
 
   @override
   Color get defaultIconColor => const Color(0xDAFF291C);
@@ -55,57 +55,47 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
     return super.coloursForRoute(route);
   }
 
-  /// Fetches the full KMB stop list, using cached data when available.
-  ///
-  /// Falls back to a live network call if no cache exists or the
-  /// cached data is stale, per [TransitUpdateScheduler]. Results are
-  /// parsed via [_parseStopsRaw], which contains no I/O of its own.
   @override
-  Future<List<BusStop>> fetchStops({bool forceRefresh = false}) async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
-    return _apiCaller.call(
+  Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress}) async {
+    final db = GtfsDatabase.forLocale("hk");
+    onProgress?.call("Fetching KMB stops...", null);
+    final freshStops = await _apiCaller.call<List<BusStop>>(
         providerCode: providerCode,
         endpointName: _stopsEndpointName,
         url: _stopsUrl,
         parseRaw: _parseStopsRaw,
-        toJson: (stops) => {"items": stops.map((s) => s.toJson()).toList()},
-        fromJson: (json) => (json["items"] as List).map((s) => BusStop.fromJson(s)).toList(),
-        forceRefresh: forceRefresh);
-  }
-
-  /// Fetches the full KMB route list, using cached data when available.
-  ///
-  /// Falls back to a live network call if no cache exists or the
-  /// cached data is stale, per [TransitUpdateScheduler]. Results are
-  /// parsed via [_parseStopsRaw], which contains no I/O of its own.
-  @override
-  Future<List<BusRoute>> fetchRoutes({bool forceRefresh = false}) async { // api call function, checks if the refresh timer is up, reads from cache, and call api if either fails
-    return _apiCaller.call(
-        providerCode: providerCode,
-        endpointName: _routeEndpointName,
-        url: _routeUrl,
-        parseRaw: _parseRoutesRaw,
-        toJson: (routes) => {"items": routes.map((s) => s.toJson()).toList()},
-        fromJson: (json) => (json["items"] as List).map((s) => BusRoute.fromJson(s)).toList(),
-        forceRefresh: forceRefresh);
-  }
-
-  @override
-  Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress}) async {
-    onProgress?.call("Fetching KMB stops...", null);
-    final stops  = await fetchStops(forceRefresh: forceRefresh);
+        forceRefresh: forceRefresh
+    );
+    if (freshStops != null) {
+      await db.upsertOperatorStops(freshStops);
+    }
 
     onProgress?.call("Fetching KMB routes...", null);
-    final routes  = await fetchRoutes(forceRefresh: forceRefresh);
-
-    final items = routes.map((route) {
+    final freshRoutes = await _apiCaller.call<List<BusRoute>>(
+        providerCode: providerCode,
+        endpointName: _routesEndpointName,
+        url: _routesUrl,
+        parseRaw: _parseRoutesRaw,
+        forceRefresh: forceRefresh
+    );
+    if (freshRoutes != null) {
+      await db.upsertOperatorRoutes(freshRoutes);
+    }
+    
+    if (freshRoutes == null && !forceRefresh) {
+      onProgress?.call("KMB up to date", 1.0);
+      return const RefreshResult();
+    }
+    
+    final routesToLink = freshRoutes ?? await db.getOperatorRoutes(providerCode);
+    
+    final items = routesToLink.map((route) {
       final direction = route.bound == "O" ? "outbound" : "inbound";
-      return BatchCallItem(
+      return BatchCallItem<BusRoute, List<String>>(
           key: route,
           endpointName: "route_stop_${route.routeNumber}_${route.bound}_1",
-          url: 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.routeNumber}/${direction}/1',
-          parseRaw: _parseRouteStopIdsRaw,
-          toJson: (ids) => {"ids": ids},
-          fromJson: (json) => List<String>.from(json["ids"])
+          url: 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.routeNumber}/$direction/1',
+          parseRaw: _parseRouteStopIdsRaw
       );
     }).toList();
 
@@ -117,26 +107,12 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
         onProgress: (done, total) => onProgress?.call("Linking routes to stops (${done}/${total})", total > 0 ? done / total : null)
     );
 
-    final routeIdsByRawStopId = <String, Set<String>>{};
-    batchResult.results.forEach((route, rawStopsIds) {
-      for (final rawStopId in rawStopsIds) {
-        routeIdsByRawStopId.putIfAbsent(rawStopId, () => {}).add(route.id);
-      }
-    });
-
-    final enrichedStops = stops.map((stop) {
-      final rawStopIds = stop.id.split(":")[1];
-      final routeIds = routeIdsByRawStopId[rawStopIds] ?? <String>[];
-      return stop.copyWith(servingRouteIds: routeIds.toList());
-    }).toList();
-
-    await _apiCaller.saveComputed(
-        providerCode: providerCode,
-        endpointName: _stopsEndpointName,
-        data: enrichedStops,
-        sourceUrl: _stopsUrl,
-        toJson: (stops) => {"items": stops.map((s) => s.toJson()).toList()},
-    );
+    for (final entry in batchResult.results.entries) {
+      final route = entry.key;
+      final rawStopIds = entry.value;
+      final operatorStopIds = rawStopIds.map((id) => "${providerCode}:${id}").toList();
+      await db.upsertRouteStops(route.id, operatorStopIds);
+    }
 
     onProgress?.call("KMB setup complete", 1.0);
 
@@ -189,12 +165,8 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
 
   @override
   Future<bool> isStale() async {
-    final cached = await _apiCaller.peek<List<BusStop>>(
-      providerCode: providerCode,
-      endpointName: _stopsEndpointName,
-      fromJson: (json) => (json["items"] as List).map((s) => BusStop.fromJson(s)).toList()
-    );
-    if (cached == null) return true;
-    return cached.isStale(const Duration(days: 7));
+    final stopsStale = await _apiCaller.isEndpointStale(providerCode, _stopsEndpointName);
+    final routesStale = await _apiCaller.isEndpointStale(providerCode, _routesEndpointName);
+    return stopsStale || routesStale;
   }
 }
