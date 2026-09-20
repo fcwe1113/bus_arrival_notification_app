@@ -48,16 +48,25 @@ class StopRoutesSheet extends StatelessWidget{
               if (departures.isEmpty) {
                 return Text("no scheduled departures found");
               }
-              return Scrollbar(child: ListView(children: departures.map((d) {
-                final mins = d.minutesFromNow;
-                final label = mins <= 0 ? "Due" : mins > 60 ? "${(mins / 60).toStringAsFixed(2)} hr" : "${mins} min";
-                return ListTile(
-                  title: Text(d.routeShortName),
-                  subtitle: Text("Scheduled"),
-                  trailing: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),)
-                );
-              }
-              ).toList()));
+
+              return FutureBuilder(future: db.getRoutesForGtfsStop(stop.id), builder: (context, routesSnapshot) {
+                // skipping null check as all clickable map icons should already have valid routes within
+                final routes = routesSnapshot.data ?? [];
+                final displayDepartures = departures.where((d) { return routes.any((r) => r.routeNumber == d.routeShortName);}).toList();
+
+                return Scrollbar(child: ListView(children: displayDepartures.map((d) {
+                  final mins = d.minutesFromNow;
+                  final label = mins <= 0 ? "Due" : mins > 60 ? "${(mins / 60).toStringAsFixed(2)} hr" : "${mins} min";
+                  final matchRoute = routes.firstWhere((r) => r.routeNumber == d.routeShortName);
+
+                  return ListTile(
+                      leading: _RoutePill(route: matchRoute),
+                      title: Text("Scheduled"),
+                      trailing: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),)
+                  );
+                }
+                ).toList()));
+              });
             }
           ),
         )
