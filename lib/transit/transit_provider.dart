@@ -13,12 +13,12 @@ import 'models/bus_route.dart';
 abstract class TransitProvider {
   String get providerCode;
   String get providerName;
-  String get IconAsset; // contains the link to the icon
+  // String get IconAsset; // contains the link to the icon
   Color get defaultIconColor;
   Color get defaultTextColor;
 
-  Future<List<BusStop>> fetchStops({bool forceRefresh});
-  Future<List<BusRoute>> fetchRoutes({bool forceRefresh});
+  // Future<List<BusStop>> fetchStops({bool forceRefresh});
+  // Future<List<BusRoute>> fetchRoutes({bool forceRefresh});
   Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress});
   Future<bool> isStale();
   RouteColourScheme coloursForRoute(BusRoute route) => RouteColourScheme(iconColour: defaultIconColor, textColour: defaultTextColor);

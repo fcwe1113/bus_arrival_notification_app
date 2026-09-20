@@ -30,7 +30,7 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     // for now we make a dummy alarm for testing purposes
     // throw UnimplementedError();
 
-    _alarms = [BusAlarm(id: "00001", routeName: "41", stopId: "1234", enabled: false, nextArrival: 12)];
+    _alarms = [BusAlarm(id: "00001", operatorRouteId: "41", gtfsStopId: "1234", enabled: false, nextArrival: 12)];
   }
 
   /// Event trigger for switching alarm enabled bool

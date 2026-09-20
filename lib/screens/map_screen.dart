@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
+import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
+import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -28,14 +30,17 @@ class _MapScreenState extends State<MapScreen> {
 
   GoogleMapController? _mapController;
   static const mapsApiKey = String.fromEnvironment('MAPS_API_KEY');
-  final Map<String, BitmapDescriptor> _iconCache = {};
-  List<BusStop> _stops = [];
+  // final Map<String, BitmapDescriptor> _iconCache = {};
+  List<GtfsStop> _stops = [];
   Map<String, BusRoute> _routesById = {};
   Set<Marker> _markers = {};
   Set<Marker> _visibleMarkers = {};
   bool _loading = true;
-  BusStop? selectedStop;
+  GtfsStop? selectedStop;
   final Set<Polyline> _routePolylines = {};
+  BitmapDescriptor? _stopIcon;
+
+  static const _stopIconAsset = "assets/icons/icon.png";
 
   @override
   void initState() {
@@ -45,19 +50,11 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _loadMapData() async {
     try {
-      final allStops = <BusStop>[];
-      final allRoutes = <BusRoute>[];
-
-      for (final provider in availableProviders) {
-        allStops.addAll(await provider.fetchStops());
-        allRoutes.addAll(await provider.fetchRoutes());
-      }
-
-      final routesById = {for (final r in allRoutes) r.id: r};
+      final db = GtfsDatabase.forLocale("hk"); // todo remove hardcode
+      final stops = await db.getAllGtfsStops();
 
       setState(() {
-        _stops = allStops;
-        _routesById = routesById;
+        _stops = stops;
         _loading = false;
       });
     } catch (e, stackTrace) {
@@ -66,39 +63,43 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<BitmapDescriptor> _iconFor(String providerCode) async {
-    if (_iconCache.containsKey(providerCode)) return _iconCache[providerCode]!;
-    final provider = availableProviders.firstWhere((p) => p.providerCode == providerCode);
-    final icon = await BitmapDescriptor.asset(const ImageConfiguration(), provider.IconAsset);
-    _iconCache[providerCode] = icon;
-    return icon;
+  Future<BitmapDescriptor> _loadStopIcon() async {
+    if (_stopIcon != null) return _stopIcon!;
+    _stopIcon = await BitmapDescriptor.asset(const ImageConfiguration(size: Size(32, 32)), _stopIconAsset);
+    return _stopIcon!;
   }
 
-  Future<Set<Marker>> _buildMarkers(List<BusStop> stops) async {
+  Future<Set<Marker>> _buildMarkers(List<GtfsStop> stops) async {
     final markers = <Marker>{};
     for (final stop in stops) {
-      if (!stop.isResolved) continue;
-      final icon = _iconFor(stop.providerCode);
-      markers.add(Marker(markerId: MarkerId(stop.id), position: LatLng(stop.lat!, stop.lng!), icon: await icon, onTap: () => _onStopTapped(stop)));
+      // if (!stop.isResolved) continue;
+      final icon = _loadStopIcon();
+      markers.add(Marker(markerId: MarkerId(stop.id), position: LatLng(stop.lat, stop.lng), icon: await icon, onTap: () => _onStopTapped(stop)));
     }
     return markers;
   }
 
-  void _onStopTapped(BusStop stop) async {
-    final servingRoutes = stop.servingRouteIds.map((id) => _routesById[id]).whereType<BusRoute>().toList();
+  void _onStopTapped(GtfsStop stop) async {
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat, stop.lng), 17))
+    // });
+
+    // print("stop id ${stop.id} pressed");
 
     setState(() {
       _mapPadding = EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5);
+      // selectedStop = stop;
     });
+    // await _updateVisibleMarkers();
 
     const zoom = 19.0;
     final screenHeight = MediaQuery.of(context).size.height;
     final sheetHeightFraction = 0.5;
-    final metersPerPixel = 156543.03392 * cos(stop.lat! * pi / 180) / pow(2, zoom);
+    final metersPerPixel = 156543.03392 * cos(stop.lat * pi / 180) / pow(2, zoom);
     final latOffset = ((screenHeight * sheetHeightFraction / 2) * metersPerPixel) / 111320;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat! - latOffset, stop.lng!), zoom));
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat - latOffset, stop.lng), zoom));
     });
 
     showModalBottomSheet(
@@ -106,21 +107,25 @@ class _MapScreenState extends State<MapScreen> {
         // backgroundColor: Colors.transparent,
         barrierColor: Colors.transparent,
         isScrollControlled: true,
-        builder: (context) => StopRoutesSheet(stop: stop, routes: servingRoutes)
-    ).whenComplete(() {
-      setState(() {
-        _mapPadding = EdgeInsets.zero;
-      });
+        builder: (context) => StopRoutesSheet(stop: stop)
+    ).whenComplete(() async {
+      setState(() => _mapPadding = EdgeInsets.zero);
+      selectedStop = null;
+      await _updateVisibleMarkers();
     });
   }
 
   Future<void> _updateVisibleMarkers() async {
     if (_mapController == null) return;
+    if (selectedStop != null) {
+      setState(() async => _visibleMarkers = (await _buildMarkers([?selectedStop])));
+      return;
+    }
 
     final bounds = await _mapController!.getVisibleRegion();
     final visibleStops = _stops.where((stop) {
-      if (!stop.isResolved) return false;
-      return bounds.contains(LatLng(stop.lat!, stop.lng!));
+      // if (!stop.isResolved) return false;
+      return bounds.contains(LatLng(stop.lat, stop.lng));
     }).toList();
 
     // hard cap the stops displayed within the visible area

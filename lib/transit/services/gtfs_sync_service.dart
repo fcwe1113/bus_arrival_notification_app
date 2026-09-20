@@ -4,7 +4,6 @@ import 'package:archive/archive_io.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
 import 'package:bus_arrival_notification_app/transit/services/csv_stream_parser.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:csv/csv.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -23,8 +22,9 @@ class GtfsSyncService {
     _db = GtfsDatabase.forLocale(locale);
   }
 
-  Future<void> parseAndStoreGtfsArchive(File zipFile, {ProgressCallback? onProgress}) async { // todo
-    final requiredFiles = ["routes.txt", "trips.txt", "calendar.txt", "stop_times.txt"]; // only read required files
+  Future<void> parseAndStoreGtfsArchive(File zipFile, ProgressCallback? onProgress) async { // todo
+    onProgress?.call("Updating gtfs data", null);
+    final requiredFiles = ["routes.txt", "trips.txt", "calendar.txt", "stop_times.txt", "stops.txt"]; // only read required files
     final inputStream = InputFileStream(zipFile.path);
     final archive = ZipDecoder().decodeStream(inputStream);
 
@@ -37,14 +37,14 @@ class GtfsSyncService {
     for (final file in validFiles) {
       final fileName = p.basename(file.name);
       final stepProgress = processedCount / totalFiles;
-      onProgress?.call("Extracting ${fileName}...", stepProgress);
+      onProgress?.call("Extracting ${fileName}... ${processedCount}/${totalFiles}", stepProgress);
 
       final extractedPath = "${tempDir.path}/${fileName}";
       final outputStream = OutputFileStream(extractedPath);
       file.writeContent(outputStream);
       await outputStream.close();
 
-      onProgress?.call("Parsing ${fileName}...", stepProgress);
+      onProgress?.call("Parsing ${fileName}... ${processedCount}/${totalFiles}", stepProgress);
 
       final extractedFile = File(extractedPath);
       switch (fileName) {
@@ -57,11 +57,17 @@ class GtfsSyncService {
         case "calendar.txt":
           await streamParseAndInsert(extractedFile, _db.batchInsertCalendar);
           break;
+        case "stops.txt":
+          await streamParseAndInsert(extractedFile, _db.batchInsertStops);
+          break;
         case "stop_times.txt":
           await streamParseAndInsert(extractedFile, _db.batchInsertStopTimes);
           break;
       }
       processedCount++;
     }
+
+    onProgress?.call("interpolating schedule...", null);
+    await _db.interpolateMissingArrivalTimes(); // ran here because gtfs_stop_times and gtfs_trips needs to be populated before running
   }
 }

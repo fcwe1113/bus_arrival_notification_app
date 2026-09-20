@@ -74,10 +74,10 @@ class HkGtfsSyncProvider implements GtfsSyncProvider{
     client.close();
 
     final db = GtfsDatabase.forLocale(locale);
-    await db.clearAllTables();
+    await db.resetDatabase(); // todo stop deleting database on data update post alpha
 
     final syncService = GtfsSyncService(locale: locale);
-    await syncService.parseAndStoreGtfsArchive(zipFile);
+    await syncService.parseAndStoreGtfsArchive(zipFile, onProgress);
 
     final prefs = await SharedPreferences.getInstance();
     final etag = response.headers["etag"];
