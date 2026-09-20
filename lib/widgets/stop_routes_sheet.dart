@@ -1,4 +1,8 @@
+import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
 import 'package:bus_arrival_notification_app/provider_registry.dart';
+import 'package:bus_arrival_notification_app/transit/locale/hk/providers/kmb_provider.dart';
+import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
+import 'package:bus_arrival_notification_app/transit/models/route_arrival.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 
@@ -36,42 +40,77 @@ class StopRoutesSheet extends StatelessWidget{
         }),
         Expanded(
           child: FutureBuilder(
-            future: db.getUpcomingDepartures(stop.id),
+            future: _resolveArrivals(stop),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator(),);
               }
-              if (snapshot.hasError) {
-                return Text("Error loading schedule: ${snapshot.error}");
-              }
-              final departures = snapshot.data ?? [];
-              if (departures.isEmpty) {
+              final arrivals = snapshot.data ?? [];
+              if (arrivals.isEmpty) {
                 return Text("no scheduled departures found");
               }
-
-              return FutureBuilder(future: db.getRoutesForGtfsStop(stop.id), builder: (context, routesSnapshot) {
-                // skipping null check as all clickable map icons should already have valid routes within
-                final routes = routesSnapshot.data ?? [];
-                final displayDepartures = departures.where((d) { return routes.any((r) => r.routeNumber == d.routeShortName);}).toList();
-
-                return Scrollbar(child: ListView(children: displayDepartures.map((d) {
-                  final mins = d.minutesFromNow;
-                  final label = mins <= 0 ? "Due" : mins > 60 ? "${(mins / 60).toStringAsFixed(2)} hr" : "${mins} min";
-                  final matchRoute = routes.firstWhere((r) => r.routeNumber == d.routeShortName);
-
-                  return ListTile(
-                      leading: _RoutePill(route: matchRoute),
-                      title: Text("Scheduled"),
-                      trailing: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),)
-                  );
-                }
-                ).toList()));
-              });
-            }
+              
+              return Scrollbar(child: ListView(children: arrivals.map((a) {
+                final label = a.minutesFromNow <= 0 ? "Due" : a.minutesFromNow > 60 ? "${(a.minutesFromNow / 60).toStringAsFixed(2)} hr" : "${a.minutesFromNow} min";
+                return ListTile(
+                  leading: _RoutePill(route: a.route),
+                  title: Text(a.route.destinationText["en"] ?? ""),
+                  subtitle: Text(a.isLive ? "Live" : "Scheduled"),
+                  trailing: Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: a.isLive ? Colors.blueAccent : null),)
+                );
+              }).toList(),));
+            },
           ),
         )
       ],)
     ));
+  }
+
+  Future<List<LiveEta>> _fetchLiveEtaForStop(GtfsStop stop) async {
+    final operatorStopIds = await GtfsDatabase.forLocale("hk").getOperatorStopIds(stop.id, providerCode: "kmb"); // todo fix hardcode
+    final kmbProvider = availableProviders.whereType<KmbProvider>().first;
+    final allEtas = <LiveEta>[];
+
+    for (final operatorStopId in operatorStopIds) {
+      final rawId = operatorStopId.split(":")[1];
+      try {
+        final etas = await kmbProvider.fetchLiveEta(rawId);
+        allEtas.addAll(etas.where((e) => e.etaTime != null));
+      } catch (_) {
+        // do nothing
+      }
+    }
+
+    return allEtas;
+  }
+
+  Future<List<RouteArrival>> _resolveArrivals(GtfsStop stop) async {
+    final db = GtfsDatabase.forLocale("hk");
+
+    final results = await Future.wait([db.getRoutesForGtfsStop(stop.id), _fetchLiveEtaForStop(stop), db.getUpcomingDepartures(stop.id, limit: 50)]);
+
+    final routes = results[0] as List<BusRoute>;
+    final liveEtas = (results[1] as List<LiveEta>).where((e) => e.etaTime != null).toList();
+    final scheduled = results[2] as List<ScheduledDeparture>;
+    final arrivals = <RouteArrival>[];
+
+    for (final route in routes) {
+      final matchingLive = liveEtas.where((e) => e.routeNumber == route.routeNumber && e.bound == route.bound).toList()
+        ..sort((a, b) => a.etaTime!.compareTo(b.etaTime!));
+      if (matchingLive.isNotEmpty) {
+        arrivals.add(RouteArrival(route: route, minutesFromNow: matchingLive.first.minutesFromNow!, isLive: true));
+        continue;
+      }
+
+      final matchingScheduled = scheduled.where((d) => d.routeShortName == route.routeNumber).toList()
+        ..sort((a, b) => a.minutesFromNow.compareTo(b.minutesFromNow));
+      if (matchingScheduled.isNotEmpty) {
+        arrivals.add(RouteArrival(route: route, minutesFromNow: matchingScheduled.first.minutesFromNow, isLive: false));
+      }
+    }
+
+    arrivals.sort((a, b) => a.minutesFromNow.compareTo(b.minutesFromNow));
+    return arrivals;
   }
 }
 
