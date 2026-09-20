@@ -1,13 +1,16 @@
 import 'dart:convert';
+import 'dart:core';
 import 'dart:ui';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
+import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
 import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
 import 'package:bus_arrival_notification_app/transit/refresh_result.dart';
 import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../models/bus_stop.dart';
 import '../../../progress_callback.dart';
@@ -117,6 +120,28 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
     onProgress?.call("KMB setup complete", 1.0);
 
     return RefreshResult(failedItems: batchResult.failedKeys.map((r) => r.routeNumber).toList());
+  }
+
+  Future<List<LiveEta>> fetchLiveEta(String rawStopId) async {
+    final url = 'https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${rawStopId}';
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode != 200) {
+      throw Exception("Live ETA fetch failed: ${response.statusCode}");
+    }
+
+    final decoded = jsonDecode(response.body);
+    final data = decoded["data"] as List;
+    
+    return data.map((entry) {
+      final etaString = entry["eta"] as String?;
+      return LiveEta(
+          routeNumber: entry["route"] as String,
+          bound: entry["dir"] as String,
+          etaTime: etaString != null ? DateTime.parse(etaString).toUtc() : null,
+          remark: entry["rmk_en"] as String?
+      );
+    }).toList();
   }
 
   /// transforms stops data into forms the app requires

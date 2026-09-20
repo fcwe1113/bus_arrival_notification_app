@@ -427,6 +427,20 @@ class GtfsDatabase {
     )).toList();
   }
 
+  Future<List<String>> getOperatorStopIds(String gtfsStopsId, {String? providerCode}) async {
+    final where = providerCode != null ? "sm.gtfs_stop_id = ? AND os.provider_code = ?" : "sm.gtfs_stop_id = ?";
+    final whereArgs = providerCode != null ? [gtfsStopsId, providerCode] : [gtfsStopsId];
+
+    final rows = await (await database).rawQuery('''
+    SELECT sm.operator_stop_id
+    FROM stop_mapping sm
+    INNER JOIN operator_stops os ON os.operator_stop_id = sm.operator_stop_id
+    WHERE ${where}
+    ''', whereArgs);
+    
+    return rows.map((r) => r["operator_stop_id"] as String).toList();
+  }
+
   Future<void> clearAllTables() async {
     final db = await database;
     await db.transaction(((txn) async {
