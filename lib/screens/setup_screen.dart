@@ -1,5 +1,5 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/services/provider_selection_service.dart';
+import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
 import 'package:flutter/material.dart';
 
 class SetupScreen extends StatefulWidget {
@@ -22,19 +22,19 @@ class _SetupScreenState extends State<SetupScreen> {
       body: Column(
         children: [
           const Padding(padding: EdgeInsets.all(16),
-            child: Text("Choose your transit networks",
+            child: Text("Choose your country/region",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
               child: ListView(
-                children: availableProviders.map((provider) {
+                children: providersByLocale.keys.map((locale) {
                   return CheckboxListTile(
-                      title: Text(provider.providerName),
-                      value: _selected.contains(provider.providerCode),
+                      title: Text(localeDisplayNames[locale] ?? locale),
+                      value: _selected.contains(locale),
                       onChanged: (checked) {
                         setState(() {
-                          checked == true ? _selected.add(provider.providerCode) : _selected.remove(provider.providerCode);
+                          checked == true ? _selected.add(locale) : _selected.remove(locale);
                         });
                       });
                 }).toList(),
@@ -48,7 +48,7 @@ class _SetupScreenState extends State<SetupScreen> {
     final shouldProceed = await _showWifiReminder();
     if (shouldProceed != true) return; // user clicked no on the popup
 
-    await ProviderSelectionService().setEnabledProviderCodes(_selected.toList());
+    await LocaleSelectionService().setEnabledLocales(_selected.toList());
     if (mounted) Navigator.pushReplacementNamed(context, "/loading");
   }
 

@@ -2,13 +2,13 @@ import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
 import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
 import 'package:bus_arrival_notification_app/screens/setup_screen.dart';
-import 'package:bus_arrival_notification_app/transit/services/provider_selection_service.dart';
+import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async { // dart entry point
 
   WidgetsFlutterBinding.ensureInitialized();
-  final selectionService = ProviderSelectionService();
+  final selectionService = LocaleSelectionService();
   final setupDone = await selectionService.hasCompletedSetup(); // check if user did setup before
 
   runApp(MyApp(initialRoute: setupDone ? "/" : "/setup",)); // app entry point, working with flutter from this point on

@@ -1,46 +1,66 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
+import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 
 import '../transit/models/bus_route.dart';
 import '../transit/models/bus_stop.dart';
+import '../transit/models/gtfs_stop.dart';
 
 class StopRoutesSheet extends StatelessWidget{
-  final BusStop stop;
-  final List<BusRoute> routes;
+  final GtfsStop stop;
 
-  const StopRoutesSheet({super.key, required this.stop, required this.routes});
+  const StopRoutesSheet({super.key, required this.stop});
 
   @override
   Widget build(BuildContext context) {
+    final db = GtfsDatabase.forLocale("hk"); // todo remove hardcode
     return SafeArea(child: Container(
       height: MediaQuery.of(context).size.height * 0.5,
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(stop.names["en"] ?? stop.id, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+        Text(stop.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),), // todo check names locale
         const SizedBox(height: 12,),
-        if (routes.isNotEmpty) ...[
-          SizedBox(height: 28, child: ListView(
+        FutureBuilder(future: db.getRoutesForGtfsStop(stop.id), builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(height: 32, child: Center(child: CircularProgressIndicator(),),);
+          }
+          final routes = snapshot.data ?? [];
+          if (routes.isEmpty) return const SizedBox.shrink();
+
+          return SizedBox(height: 32, child: ListView(
             scrollDirection: Axis.horizontal,
             children: routes.map((route) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _RoutePill(route: route))
-            ).toList(),
-          ),), const SizedBox(height: 12,)
-        ],
-        Expanded(child: Scrollbar(child: ListView(children: [
-          if (routes.isEmpty)
-            const Text("No routes found for this stop.")
-          else
-            ...routes.map((route) => ListTile( // todo replace with live arrivals later
-                leading: _RoutePill(route: route),
-                title: Text(route.destinationText["en"] ?? ""),
-                subtitle: Text(route.destinationText["en"] ?? ""),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              )
-            )
-        ],)))
+              padding: const EdgeInsetsGeometry.only(right: 8),
+              child: _RoutePill(route: route),)).toList(),
+          ),);
+        }),
+        Expanded(
+          child: FutureBuilder(
+            future: db.getUpcomingDepartures(stop.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(),);
+              }
+              if (snapshot.hasError) {
+                return Text("Error loading schedule: ${snapshot.error}");
+              }
+              final departures = snapshot.data ?? [];
+              if (departures.isEmpty) {
+                return Text("no scheduled departures found");
+              }
+              return Scrollbar(child: ListView(children: departures.map((d) {
+                final mins = d.minutesFromNow;
+                final label = mins <= 0 ? "Due" : mins > 60 ? "${(mins / 60).toStringAsFixed(2)} hr" : "${mins} min";
+                return ListTile(
+                  title: Text(d.routeShortName),
+                  subtitle: Text("Scheduled"),
+                  trailing: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),)
+                );
+              }
+              ).toList()));
+            }
+          ),
+        )
       ],)
     ));
   }

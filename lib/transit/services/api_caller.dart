@@ -1,23 +1,18 @@
-import 'package:bus_arrival_notification_app/transit/providers/transit_provider.dart';
 import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
-import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BatchCallItem<K, T> {
   final K key;
   final String endpointName;
   final String url;
   final T Function(String rawJson) parseRaw;
-  final Map<String, dynamic> Function(T) toJson;
-  final T Function(Map<String, dynamic>) fromJson;
 
   const BatchCallItem({
     required this.key,
     required this.endpointName,
     required this.url,
     required this.parseRaw,
-    required this.toJson,
-    required this.fromJson
   });
 }
 
@@ -29,25 +24,31 @@ class BatchCallResult<K, T> {
 }
 
 class ApiCaller {
-  final TransitCacheService _cache;
   static const _defaultMaxAge = Duration(days: 7);
 
-  ApiCaller(this._cache);
+  Future<bool> _isStale(String providerCode, String endpointName, Duration maxAge) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastMillis = prefs.getInt("${providerCode}_${endpointName}_last_fetched");
+    if (lastMillis == null) return true;
+    final last = DateTime.fromMillisecondsSinceEpoch(lastMillis);
+    return DateTime.now().difference(last) > maxAge;
+  }
 
-  Future<T> call<T>({
+  Future<void> _markFetched(String providerCode, String endpointName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt("${providerCode}_${endpointName}_last_fetched", DateTime.now().millisecondsSinceEpoch);
+  }
+
+  Future<T?> call<T>({
     required String providerCode,
     required String endpointName,
     required String url,
     required T Function(String rawJson) parseRaw,
-    required Map<String, dynamic> Function(T) toJson,
-    required T Function(Map<String, dynamic>) fromJson,
     bool forceRefresh = false,
     Duration maxAge = _defaultMaxAge
   }) async {
-    if (!forceRefresh) {
-      final cached = await _cache.load<T>(providerCode: providerCode, endpointName: endpointName, fromJson: fromJson);
-      if (cached != null && !cached.isStale(maxAge)) return cached.data;
-    }
+    final stale = forceRefresh || await _isStale(providerCode, endpointName, maxAge);
+    if (!stale) return null;
 
     final response = await http.get(Uri.parse(url));
     if (response.statusCode != 200) {
@@ -55,7 +56,7 @@ class ApiCaller {
     }
 
     final data = parseRaw(response.body);
-    await _cache.save<T>(providerCode: providerCode, endpointName: endpointName, data: data, sourceUrl: url, toJson: toJson);
+    await _markFetched(providerCode, endpointName);
     return data;
   }
 
@@ -91,8 +92,6 @@ class ApiCaller {
               endpointName: item.endpointName,
               url: item.url,
               parseRaw: item.parseRaw,
-              toJson: item.toJson,
-              fromJson: item.fromJson,
               forceRefresh: forceRefresh,
               maxAge: maxAge
             );
@@ -118,21 +117,25 @@ class ApiCaller {
     return BatchCallResult(results: results, failedKeys: pending.map((i) => i.key).toList());
   }
 
-  Future<void> saveComputed<T>({
-    required String providerCode,
-    required String endpointName,
-    required T data,
-    required String sourceUrl,
-    required Map<String, dynamic> Function(T) toJson
-  }) async {
-    return _cache.save(providerCode: providerCode, endpointName: endpointName, data: data, sourceUrl: sourceUrl, toJson: toJson);
-  }
+  // Future<void> saveComputed<T>({
+  //   required String providerCode,
+  //   required String endpointName,
+  //   required T data,
+  //   required String sourceUrl,
+  //   required Map<String, dynamic> Function(T) toJson
+  // }) async {
+  //   return _cache.save(providerCode: providerCode, endpointName: endpointName, data: data, sourceUrl: sourceUrl, toJson: toJson);
+  // }
+  //
+  // Future<CachedEntry<T>?> peek<T>({
+  //   required String providerCode,
+  //   required String endpointName,
+  //   required T Function(Map<String, dynamic>) fromJson
+  // }) async {
+  //   return _cache.load<T>(providerCode: providerCode, endpointName: endpointName, fromJson: fromJson);
+  // }
 
-  Future<CachedEntry<T>?> peek<T>({
-    required String providerCode,
-    required String endpointName,
-    required T Function(Map<String, dynamic>) fromJson
-  }) async {
-    return _cache.load<T>(providerCode: providerCode, endpointName: endpointName, fromJson: fromJson);
+  Future<bool> isEndpointStale(String providerCode, String endpointName, {Duration maxAge = _defaultMaxAge}){
+    return _isStale(providerCode, endpointName, maxAge);
   }
 }
