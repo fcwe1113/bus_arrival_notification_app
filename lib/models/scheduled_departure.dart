@@ -1,15 +1,19 @@
+import 'package:bus_arrival_notification_app/provider_registry.dart';
+import 'package:bus_arrival_notification_app/transit/models/locale_config.dart';
+
 class ScheduledDeparture {
   final String routeShortName;
   final String arrivalTime; // in "HH:MM:SS"
   final int? directionId;
+  final String locale;
 
-  const ScheduledDeparture ({required this.routeShortName, required this.arrivalTime, this.directionId});
+  const ScheduledDeparture ({required this.routeShortName, required this.arrivalTime, this.directionId, required this.locale});
 
   int get minutesFromNow {
     final parts = arrivalTime.split(":");
     final hours = int.parse(parts[0]);
     final minutes = int.parse(parts[1]);
-    final now = DateTime.now().toUtc().add(const Duration(hours: 8)); // accounting for local gmt+8
+    final now = localeConfigs[locale]!.nowInLocale(); // accounting for local gmt+8
     final serviceDayStart = DateTime.utc(now.year, now.month, now.day);
     final scheduledDateTime = serviceDayStart.add(Duration(hours: hours, minutes: minutes));
 
