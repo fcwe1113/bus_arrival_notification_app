@@ -48,7 +48,15 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
   RouteColourScheme coloursForRoute(BusRoute route) {
 
     bool _isAirportRoute(BusRoute route) {
-      return route.routeNumber.startsWith("A") || route.routeNumber.startsWith("E") || route.routeNumber.startsWith("NA"); // todo define NA and N(E)
+      return route.routeNumber.startsWith("A") || route.routeNumber.startsWith("E");
+    }
+    
+    bool _isNightRoute(BusRoute route) {
+      return route.routeNumber.startsWith("N");
+    }
+
+    if (_isNightRoute(route)) {
+      return const RouteColourScheme(iconColour: Color(0xFF090740), textColour: Colors.white);
     }
 
     if (_isAirportRoute(route)) {
