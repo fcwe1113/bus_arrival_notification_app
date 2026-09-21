@@ -68,16 +68,29 @@ class StopRoutesSheet extends StatelessWidget{
 
   Future<List<LiveEta>> _fetchLiveEtaForStop(GtfsStop stop) async {
     final operatorStopIds = await GtfsDatabase.forLocale("hk").getOperatorStopIds(stop.id, providerCode: "kmb"); // todo fix hardcode
-    final kmbProvider = availableProviders.whereType<KmbProvider>().first;
+
+    final idsByProvider = <String,List<String>>{};
+    for (final operatorStopId in operatorStopIds) {
+      final parts = operatorStopId.split(":");
+      final providerCode = parts[0];
+      final rawId = parts[1];
+      idsByProvider.putIfAbsent(providerCode, () => []).add(rawId);
+    }
+
     final allEtas = <LiveEta>[];
 
-    for (final operatorStopId in operatorStopIds) {
-      final rawId = operatorStopId.split(":")[1];
-      try {
-        final etas = await kmbProvider.fetchLiveEta(rawId);
-        allEtas.addAll(etas.where((e) => e.etaTime != null));
-      } catch (_) {
-        // do nothing
+    for (final entry in idsByProvider.entries) {
+      final providerCode = entry.key;
+      final rawIds = entry.value;
+      final provider = availableProviders.where((p) => p.providerCode == providerCode).firstOrNull;
+      if (provider == null) continue; // skip stops with no valid providers
+      for (final rawId in rawIds) {
+        try {
+          final etas = await provider.fetchLiveEta(rawId);
+          allEtas.addAll(etas);
+        } catch (_) {
+          // do nothing
+        }
       }
     }
 

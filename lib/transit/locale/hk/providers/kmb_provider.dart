@@ -122,6 +122,7 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
     return RefreshResult(failedItems: batchResult.failedKeys.map((r) => r.routeNumber).toList());
   }
 
+  @override
   Future<List<LiveEta>> fetchLiveEta(String rawStopId) async {
     final url = 'https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${rawStopId}';
     final response = await http.get(Uri.parse(url));

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
+import 'package:bus_arrival_notification_app/provider_registry.dart';
 import 'package:bus_arrival_notification_app/services/geo_utils.dart';
 import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
@@ -367,7 +368,7 @@ class GtfsDatabase {
 
   Future<List<ScheduledDeparture>> getUpcomingDepartures(String stopId, {int limit = 5}) async {
     final db = await database;
-    final now = DateTime.now().toUtc().add(const Duration(hours: 8)); // todo fix hardcode
+    final now = localeConfigs[locale]!.nowInLocale();
 
     final weekDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     final currentDayColumn = weekDays[now.weekday - 1];
@@ -393,7 +394,8 @@ class GtfsDatabase {
     return rows.map((row) => ScheduledDeparture(
         routeShortName: row["route_short_name"] as String,
         arrivalTime: row["arrival_time"] as String,
-        directionId: row["direction_id"] as int?
+        directionId: row["direction_id"] as int?,
+        locale: locale
     )).toList();
   }
 

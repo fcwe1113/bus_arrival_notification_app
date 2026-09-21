@@ -30,7 +30,7 @@ class _SetupScreenState extends State<SetupScreen> {
               child: ListView(
                 children: providersByLocale.keys.map((locale) {
                   return CheckboxListTile(
-                      title: Text(localeDisplayNames[locale] ?? locale),
+                      title: Text(localeConfigs[locale]?.displayName ?? locale),
                       value: _selected.contains(locale),
                       onChanged: (checked) {
                         setState(() {
