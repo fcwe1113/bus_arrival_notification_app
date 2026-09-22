@@ -1,13 +1,11 @@
 import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
 import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/locale/hk/providers/kmb_provider.dart';
 import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
 import 'package:bus_arrival_notification_app/transit/models/route_arrival.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 
 import '../transit/models/bus_route.dart';
-import '../transit/models/bus_stop.dart';
 import '../transit/models/gtfs_stop.dart';
 
 class StopRoutesSheet extends StatelessWidget{
@@ -29,11 +27,12 @@ class StopRoutesSheet extends StatelessWidget{
             return const SizedBox(height: 32, child: Center(child: CircularProgressIndicator(),),);
           }
           final routes = snapshot.data ?? [];
-          if (routes.isEmpty) return const SizedBox.shrink();
+          final dedupedRoutes = BusRoute.dedupeByRouteNumber(routes);
+          if (dedupedRoutes.isEmpty) return const SizedBox.shrink();
 
           return SizedBox(height: 32, child: ListView(
             scrollDirection: Axis.horizontal,
-            children: routes.map((route) => Padding(
+            children: dedupedRoutes.map((route) => Padding(
               padding: const EdgeInsetsGeometry.only(right: 8),
               child: _RoutePill(route: route),)).toList(),
           ),);
@@ -105,20 +104,27 @@ class StopRoutesSheet extends StatelessWidget{
     final routes = results[0] as List<BusRoute>;
     final liveEtas = (results[1] as List<LiveEta>).where((e) => e.etaTime != null).toList();
     final scheduled = results[2] as List<ScheduledDeparture>;
+
+    final routeGroups = <String, List<BusRoute>>{};
+    for (final route in routes) {
+      routeGroups.putIfAbsent(route.routeNumber, () => []).add(route);
+    }
     final arrivals = <RouteArrival>[];
 
-    for (final route in routes) {
-      final matchingLive = liveEtas.where((e) => e.routeNumber == route.routeNumber && e.bound == route.bound).toList()
+    for (final group in routeGroups.values) {
+      final representative = group.first;
+
+      final matchingLive = liveEtas.where((e) => group.any((r) => r.routeNumber == e.routeNumber)).toList()
         ..sort((a, b) => a.etaTime!.compareTo(b.etaTime!));
       if (matchingLive.isNotEmpty) {
-        arrivals.add(RouteArrival(route: route, minutesFromNow: matchingLive.first.minutesFromNow!, isLive: true));
+        arrivals.add(RouteArrival(route: representative, minutesFromNow: matchingLive.first.minutesFromNow!, isLive: true));
         continue;
       }
 
-      final matchingScheduled = scheduled.where((d) => d.routeShortName == route.routeNumber).toList()
+      final matchingScheduled = scheduled.where((d) => group.any((r) => d.routeShortName == r.routeNumber)).toList()
         ..sort((a, b) => a.minutesFromNow.compareTo(b.minutesFromNow));
       if (matchingScheduled.isNotEmpty) {
-        arrivals.add(RouteArrival(route: route, minutesFromNow: matchingScheduled.first.minutesFromNow, isLive: false));
+        arrivals.add(RouteArrival(route: representative, minutesFromNow: matchingScheduled.first.minutesFromNow, isLive: false));
       }
     }
 

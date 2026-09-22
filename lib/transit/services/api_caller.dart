@@ -1,4 +1,3 @@
-import 'package:bus_arrival_notification_app/transit/services/transit_cache_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -52,7 +51,7 @@ class ApiCaller {
 
     final response = await http.get(Uri.parse(url));
     if (response.statusCode != 200) {
-      throw Exception("${endpointName} fetch failed: ${response.statusCode}");
+      throw Exception("$endpointName fetch failed: ${response.statusCode}");
     }
 
     final data = parseRaw(response.body);

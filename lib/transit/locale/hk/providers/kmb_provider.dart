@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:core';
-import 'dart:ui';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
@@ -46,19 +45,19 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
   @override
   RouteColourScheme coloursForRoute(BusRoute route) {
 
-    bool _isAirportRoute(BusRoute route) {
+    bool isAirportRoute(BusRoute route) {
       return route.routeNumber.startsWith("A") || route.routeNumber.startsWith("E");
     }
     
-    bool _isNightRoute(BusRoute route) {
+    bool isNightRoute(BusRoute route) {
       return route.routeNumber.startsWith("N");
     }
 
-    if (_isNightRoute(route)) {
+    if (isNightRoute(route)) {
       return const RouteColourScheme(iconColour: Color(0xFF090740), textColour: Colors.white);
     }
 
-    if (_isAirportRoute(route)) {
+    if (isAirportRoute(route)) {
       return const RouteColourScheme(iconColour: Colors.orange, textColour: Colors.white);
     }
 
@@ -114,13 +113,13 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
         items: items,
         forceRefresh: forceRefresh,
         maxAge: const Duration(days: 7),
-        onProgress: (done, total) => onProgress?.call("Linking routes to stops (${done}/${total})", total > 0 ? done / total : null)
+        onProgress: (done, total) => onProgress?.call("Linking routes to stops ($done/$total)", total > 0 ? done / total : null)
     );
 
     for (final entry in batchResult.results.entries) {
       final route = entry.key;
       final rawStopIds = entry.value;
-      final operatorStopIds = rawStopIds.map((id) => "${providerCode}:${id}").toList();
+      final operatorStopIds = rawStopIds.map((id) => "$providerCode:$id").toList();
       await db.upsertRouteStops(route.id, operatorStopIds);
     }
 
@@ -131,7 +130,7 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
 
   @override
   Future<List<LiveEta>> fetchLiveEta(String rawStopId) async {
-    final url = 'https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${rawStopId}';
+    final url = 'https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/$rawStopId';
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode != 200) {
@@ -160,7 +159,7 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
     final List<dynamic> data = decoded["data"];
     
     return data.map((s) => BusStop(
-        id: "${providerCode}:${s["stop"]}",
+        id: "$providerCode:${s["stop"]}",
         names: {"en": s["name_en"] as String? ?? "", "zh-Hant": s["name_tc"] as String? ?? "", "zh-Hans": s["name_sc"] as String? ?? ""},
         lat: double.tryParse(s["lat"].toString()),
         lng: double.tryParse(s["long"].toString()),
@@ -179,7 +178,7 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
       final bound = r["bound"] as String? ?? "";
       final serviceType = r["service_type"] as String? ?? "";
       return BusRoute(
-        id: "${providerCode}:${routeNumber}_${bound}_${serviceType}",
+        id: "$providerCode:${routeNumber}_${bound}_$serviceType",
         names: {"en": routeNumber, "zh-Hant": routeNumber},
         routeNumber: routeNumber,
         bound: bound,

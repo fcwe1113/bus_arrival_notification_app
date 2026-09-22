@@ -49,4 +49,12 @@ class BusRoute {
       destinationText: Map<String, String>.from(json["destinationText"]),
       providerCode: json["providerCode"],
   );
+
+  static List<BusRoute> dedupeByRouteNumber(List<BusRoute> routes) {
+    final byRouteNumber = <String, BusRoute>{};
+    for (final route in routes) {
+      byRouteNumber.putIfAbsent(route.routeNumber, () => route);
+    }
+    return byRouteNumber.values.toList();
+  }
 }

@@ -37,14 +37,14 @@ class GtfsSyncService {
     for (final file in validFiles) {
       final fileName = p.basename(file.name);
       final stepProgress = processedCount / totalFiles;
-      onProgress?.call("Extracting ${fileName}... ${processedCount}/${totalFiles}", stepProgress);
+      onProgress?.call("Extracting $fileName... $processedCount/$totalFiles", stepProgress);
 
-      final extractedPath = "${tempDir.path}/${fileName}";
+      final extractedPath = "${tempDir.path}/$fileName";
       final outputStream = OutputFileStream(extractedPath);
       file.writeContent(outputStream);
       await outputStream.close();
 
-      onProgress?.call("Parsing ${fileName}... ${processedCount}/${totalFiles}", stepProgress);
+      onProgress?.call("Parsing $fileName... $processedCount/$totalFiles", stepProgress);
 
       final extractedFile = File(extractedPath);
       switch (fileName) {

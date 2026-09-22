@@ -21,6 +21,6 @@ class BusAlarm {
     bool? enabled,
     int? nextArrival
   }) {
-    return BusAlarm(id: id ?? this.id, operatorRouteId: routeName ?? this.operatorRouteId, gtfsStopId: stopId ?? this.gtfsStopId, enabled: enabled ?? this.enabled, nextArrival: nextArrival ?? this.nextArrival);
+    return BusAlarm(id: id ?? this.id, operatorRouteId: routeName ?? operatorRouteId, gtfsStopId: stopId ?? gtfsStopId, enabled: enabled ?? this.enabled, nextArrival: nextArrival ?? this.nextArrival);
   }
 }

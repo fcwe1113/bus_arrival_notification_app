@@ -3,7 +3,6 @@
 
 import 'dart:ui';
 
-import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
 import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
 import 'package:bus_arrival_notification_app/transit/progress_callback.dart';

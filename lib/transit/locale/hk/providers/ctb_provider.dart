@@ -14,6 +14,14 @@ import '../../../models/route_colour_scheme.dart';
 import '../../../progress_callback.dart';
 import '../../../refresh_result.dart';
 
+// todo fix double routes present in both providers
+// todo fix stop names
+// query for all reused routenum
+// SELECT t.route_number
+// from operator_routes t
+// GROUP by route_number
+// HAVING COUNT(*) > 1
+
 class CtbProvider extends TransitProvider{
   final ApiCaller _apiCaller;
   static const _routesEndpointName = "route";
@@ -33,19 +41,19 @@ class CtbProvider extends TransitProvider{
   @override
   RouteColourScheme coloursForRoute(BusRoute route) {
 
-    bool _isAirportRoute(BusRoute route) {
-      return route.routeNumber.startsWith("A");
+    bool isAirportRoute(BusRoute route) {
+      return route.routeNumber.startsWith("A") || route.routeNumber.startsWith("NA");
     }
 
-    bool _isNightRoute(BusRoute route) {
+    bool isNightRoute(BusRoute route) {
       return route.routeNumber.startsWith("N");
     }
 
-    if (_isAirportRoute(route)) {
+    if (isAirportRoute(route)) {
       return const RouteColourScheme(iconColour: Color(0xFF822905), textColour: Color(0xFFD6B706));
     }
 
-    if (_isNightRoute(route)) {
+    if (isNightRoute(route)) {
       return const RouteColourScheme(iconColour: Color(0xFF090740), textColour: Color(0xFFFFD200));
     }
 
@@ -77,7 +85,7 @@ class CtbProvider extends TransitProvider{
       return BatchCallItem<BusRoute, List<String>>(
           key: route,
           endpointName: "route_stop_${route.routeNumber}_${route.bound}",
-          url: 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/route-stop/CTB/${route.routeNumber}/${direction}',
+          url: 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/route-stop/CTB/${route.routeNumber}/$direction',
           parseRaw: _parseRouteStopIdsRaw
       );
     }).toList();
@@ -86,13 +94,13 @@ class CtbProvider extends TransitProvider{
         providerCode: providerCode,
         items: routeStopItems,
         forceRefresh: forceRefresh,
-        onProgress: (done, total) => onProgress?.call("Fetching Citybus route-stop sequences (${done}/${total})...", total > 0 ? done / total : null)
+        onProgress: (done, total) => onProgress?.call("Fetching Citybus route-stop sequences ($done/$total)...", total > 0 ? done / total : null)
     );
 
     for (final entry in routeStopResult.results.entries) {
       final route = entry.key;
       final rawStopIds = entry.value;
-      final operatorStopIds = rawStopIds.map((id) => "${providerCode}:${id}").toList();
+      final operatorStopIds = rawStopIds.map((id) => "$providerCode:$id").toList();
       await db.upsertRouteStops(route.id, operatorStopIds);
     }
 
@@ -104,8 +112,8 @@ class CtbProvider extends TransitProvider{
     final stopDetailItems = uniqueRawStopIds.map((rawStopId) {
       return BatchCallItem<String, BusStop>(
           key: rawStopId,
-          endpointName: "stop_${rawStopId}",
-          url: 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/stop/${rawStopId}',
+          endpointName: "stop_$rawStopId",
+          url: 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/stop/$rawStopId',
           parseRaw: ((rawJson) => _parseStopDetailRaw(rawJson, rawStopId))
       );
     }).toList();
@@ -114,7 +122,7 @@ class CtbProvider extends TransitProvider{
         providerCode: providerCode,
         items: stopDetailItems,
         forceRefresh: forceRefresh,
-        onProgress: (done, total) => onProgress?.call("Fetching Citybus stop details (${done}/${total})", total > 0 ? done / total : null)
+        onProgress: (done, total) => onProgress?.call("Fetching Citybus stop details ($done/$total)", total > 0 ? done / total : null)
     );
 
     await db.upsertOperatorStops(stopDetailResult.results.values.toList());
@@ -123,7 +131,7 @@ class CtbProvider extends TransitProvider{
 
     final failed = <String>[
       ...routeStopResult.failedKeys.map((r) => "route-stop ${r.routeNumber}"),
-      ...stopDetailResult.failedKeys.map((id) => "stop ${id}")
+      ...stopDetailResult.failedKeys.map((id) => "stop $id")
     ];
     return RefreshResult(failedItems: failed);
   }
@@ -135,11 +143,11 @@ class CtbProvider extends TransitProvider{
 
   @override
   Future<List<LiveEta>> fetchLiveEta(String rawStopId) async {
-    final operatorStopId = "${providerCode}:${rawStopId}";
+    final operatorStopId = "$providerCode:$rawStopId";
     final routeNumbers = await GtfsDatabase.forLocale("hk").getRouteNumbersForOperatorStop(operatorStopId);
     final allEtas = <LiveEta>[];
     for (final routeNumber in routeNumbers) {
-      final url = 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/${rawStopId}/${routeNumber}';
+      final url = 'https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/CTB/$rawStopId/$routeNumber';
       try {
         final response = await http.get(Uri.parse(url));
         if (response.statusCode != 200) continue;
@@ -170,7 +178,7 @@ class CtbProvider extends TransitProvider{
     return data.map((r) {
       final routeNumber = r["route"] as String? ?? "";
       return BusRoute(
-          id: "${providerCode}:${routeNumber}", 
+          id: "$providerCode:$routeNumber", 
           names: {"en": routeNumber, "zh-Hant": routeNumber}, 
           routeNumber: routeNumber, 
           bound: "O", 
@@ -191,7 +199,7 @@ class CtbProvider extends TransitProvider{
     final decoded = jsonDecode(rawJson);
     final s = decoded["data"];
     return BusStop(
-        id: "${providerCode}:${rawStopId}",
+        id: "$providerCode:$rawStopId",
         names: {"en": s["name_en"] as String? ?? "", "zh-Hant": s["name_tc"] as String? ?? "", "zh-Hans": s["name_sc"] as String? ?? ""},
         lat: double.tryParse(s["lat"].toString()),
         lng: double.tryParse(s["long"].toString()),

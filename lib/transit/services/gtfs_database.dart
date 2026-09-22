@@ -8,7 +8,6 @@ import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 
 import '../models/bus_route.dart';
 
@@ -28,7 +27,7 @@ class GtfsDatabase {
       return _databases[locale]!;
     }
     final dir = await getApplicationDocumentsDirectory();
-    final db = await _initDB("${dir.path}/gtfs/${locale}.db");
+    final db = await _initDB("${dir.path}/gtfs/$locale.db");
     _databases[locale] = db;
     return db;
   }
@@ -384,7 +383,7 @@ class GtfsDatabase {
     INNER JOIN gtfs_calendar c ON t.service_id = c.service_id
     WHERE st.stop_id = ?
       AND st.arrival_time > ?
-      AND c.${currentDayColumn} = 1
+      AND c.$currentDayColumn = 1
       AND c.start_date <= ?
       AND c.end_date >= ?
     ORDER BY st.arrival_time ASC
@@ -437,7 +436,7 @@ class GtfsDatabase {
     SELECT sm.operator_stop_id
     FROM stop_mapping sm
     INNER JOIN operator_stops os ON os.operator_stop_id = sm.operator_stop_id
-    WHERE ${where}
+    WHERE $where
     ''', whereArgs);
     
     return rows.map((r) => r["operator_stop_id"] as String).toList();
@@ -469,7 +468,7 @@ class GtfsDatabase {
     }
     _databases.remove(locale);
     final dir = await getApplicationDocumentsDirectory();
-    final file = File("${dir.path}/gtfs/${locale}.db");
+    final file = File("${dir.path}/gtfs/$locale.db");
     if (await file.exists()) {
       await file.delete();
     }

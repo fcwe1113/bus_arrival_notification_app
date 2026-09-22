@@ -18,11 +18,11 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
 
   for (final provider in enabledProviders) {
     final result = await provider.refresh(forceRefresh: forceRefresh, onProgress: onProgress);
-    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
+    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: $item"));
   }
 
   for (final locale in enabledLocales) {
-    onProgress?.call("Matching stops for ${locale}...", null);
+    onProgress?.call("Matching stops for $locale...", null);
     await GtfsDatabase.forLocale(locale).matchOperatorStopsToGtfs();
   }
 
@@ -52,11 +52,11 @@ Future<List<String>> refreshStaleProviders({ProgressCallback? onProgress, bool f
     }
 
     final result = await provider.refresh(onProgress: onProgress);
-    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: ${item}"));
+    allFailures.addAll(result.failedItems.map((item) => "${provider.providerName}: $item"));
   }
 
   for (final locale in enabledLocales) {
-    onProgress?.call("Matching stops for ${locale}...", null);
+    onProgress?.call("Matching stops for $locale...", null);
     await GtfsDatabase.forLocale(locale).matchOperatorStopsToGtfs();
   }
 

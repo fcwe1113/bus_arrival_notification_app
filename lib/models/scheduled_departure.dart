@@ -1,5 +1,4 @@
 import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/models/locale_config.dart';
 
 class ScheduledDeparture {
   final String routeShortName;
