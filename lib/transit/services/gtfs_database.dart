@@ -435,13 +435,17 @@ class GtfsDatabase {
     return rows.map((row) => GtfsStop(id: row["stop_id"] as String, name: row["stop_name"] as String, lat: row["stop_lat"] as double, lng: row["stop_lon"] as double)).toList();
   }
 
-  Future<List<BusRoute>> getRoutesForGtfsStop(String gtfsStopId) async {
+  Future<List<BusRoute>> getRoutesForGtfsStop(String gtfsStopId) async { // todo check query on circular routes
     final rows = await (await database).rawQuery('''
     SELECT DISTINCT r.*
     FROM operator_routes r
     INNER JOIN route_stops rs ON rs.operator_route_id = r.operator_route_id
     INNER JOIN stop_mapping sm ON sm.operator_stop_id = rs.operator_stop_id
-    WHERE sm.gtfs_stop_id = ? 
+    WHERE sm.gtfs_stop_id = ? AND rs.stop_sequence < (
+      SELECT MAX(rs2.stop_sequence)
+      FROM route_stops rs2
+      WHERE rs2.operator_route_id = rs.operator_route_id
+    )
     ''', [gtfsStopId]);
     
     return rows.map((row) => BusRoute(
