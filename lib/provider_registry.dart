@@ -1,3 +1,4 @@
+import 'package:bus_arrival_notification_app/transit/locale/hk/providers/ctb_provider.dart';
 import 'package:bus_arrival_notification_app/transit/locale/hk/providers/kmb_provider.dart';
 import 'package:bus_arrival_notification_app/transit/models/locale_config.dart';
 import 'package:bus_arrival_notification_app/transit/transit_provider.dart';
@@ -6,7 +7,7 @@ import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
 final ApiCaller _apiCaller = ApiCaller();
 
 final Map<String, List<TransitProvider>> providersByLocale = {
-  'hk': [KmbProvider(_apiCaller)],
+  'hk': [KmbProvider(_apiCaller), CtbProvider(_apiCaller)],
   // 'nyc': [MtaProvider()],  // future
 };
 

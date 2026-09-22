@@ -57,7 +57,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = "Setup failed: ${e}";
+          _error = "Setup failed: $e";
         });
       }
     }

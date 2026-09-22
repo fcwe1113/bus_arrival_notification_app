@@ -1,13 +1,11 @@
 import 'dart:math';
 
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../provider_registry.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/stop_routes_sheet.dart';
 
@@ -32,8 +30,8 @@ class _MapScreenState extends State<MapScreen> {
   static const mapsApiKey = String.fromEnvironment('MAPS_API_KEY');
   // final Map<String, BitmapDescriptor> _iconCache = {};
   List<GtfsStop> _stops = [];
-  Map<String, BusRoute> _routesById = {};
-  Set<Marker> _markers = {};
+  final Map<String, BusRoute> _routesById = {};
+  final Set<Marker> _markers = {};
   Set<Marker> _visibleMarkers = {};
   bool _loading = true;
   GtfsStop? selectedStop;
@@ -58,7 +56,7 @@ class _MapScreenState extends State<MapScreen> {
         _loading = false;
       });
     } catch (e, stackTrace) {
-      print("Map data load failed: ${e}");
+      print("Map data load failed: $e");
       print(stackTrace);
     }
   }

@@ -8,7 +8,6 @@ import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 
 import '../models/bus_route.dart';
 
@@ -28,7 +27,7 @@ class GtfsDatabase {
       return _databases[locale]!;
     }
     final dir = await getApplicationDocumentsDirectory();
-    final db = await _initDB("${dir.path}/gtfs/${locale}.db");
+    final db = await _initDB("${dir.path}/gtfs/$locale.db");
     _databases[locale] = db;
     return db;
   }
@@ -302,40 +301,64 @@ class GtfsDatabase {
     final db = await database;
     final operatorRows = await db.query("operator_stops", where: "lat IS NOT NULL AND lng IS NOT NULL");
     final gtfsRows = await db.query("gtfs_stops");
+    
+    final nameIndex = <String, List<Map<String, dynamic>>>{};
+    for (final gRow in gtfsRows) {
+      final rawName = gRow["stop_name"] as String;
+      for (final fragment in GtfsStop.extractNameFragments(rawName)) {
+        final key = GtfsStop.normalizeForMatching(fragment);
+        nameIndex.putIfAbsent(key, () => []).add(gRow);
+      }
+    }
 
     final batch = db.batch();
     final ambiguousMatches = <String>[];
+    final noMatches = <String>[];
 
     for (final opRow in operatorRows) {
       final opStopId = opRow["operator_stop_id"] as String;
       final opLat = opRow["lat"] as double;
       final opLng = opRow["lng"] as double;
+      final opName = (jsonDecode(opRow["names"] as String) as Map<String, dynamic>)["en"] as String? ?? "";
+      
+      final normalizedOpName = GtfsStop.normalizeForMatching(opName);
+      final nameCandidates = nameIndex[normalizedOpName] ?? [];
 
       String? bestGtfsId;
-      double bestDistance = double.infinity;
-      double secondBestDistance = double.infinity;
-
-      for (final gRow in gtfsRows) {
-        final gLat = gRow["stop_lat"] as double;
-        final gLng = gRow["stop_lon"] as double;
-        final distance = haversineDistanceMeters(opLat, opLng, gLat, gLng);
-
-        if (distance < bestDistance) {
-          secondBestDistance = bestDistance;
-          bestDistance = distance;
-          bestGtfsId = gRow["stop_id"] as String;
-        } else if (distance < secondBestDistance) {
-          secondBestDistance = distance;
+      double bestDistance;
+      
+      if (nameCandidates.length == 1) {
+        bestGtfsId = nameCandidates.first["stop_id"] as String;
+        bestDistance = haversineDistanceMeters(opLat, opLng, nameCandidates.first["stop_lat"] as double, nameCandidates.first["stop_lon"] as double
+        );
+      } else if (nameCandidates.length > 1) {
+        bestGtfsId = null;
+        bestDistance = double.infinity;
+        for (final candidate in nameCandidates) {
+          final d = haversineDistanceMeters(opLat, opLng, candidate["stop_lat"] as double, candidate["stop_lon"] as double
+          );
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestGtfsId = candidate["stop_id"] as String;
+          }
         }
+        ambiguousMatches.add("${opStopId} (name matched ${nameCandidates.length} GTFS stops, picked nearest)");
+      } else {
+        bestGtfsId = null;
+        bestDistance = double.infinity;
+        for (final gRow in gtfsRows) {
+          final d = haversineDistanceMeters(opLat, opLng,
+              gRow["stop_lat"] as double, gRow["stop_lon"] as double
+          );
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestGtfsId = gRow["stop_id"] as String;
+          }
+        }
+        noMatches.add(opStopId);
       }
 
-      if (bestGtfsId == null || bestDistance > maxDistanceMeters) {
-        continue;
-      }
-
-      if (secondBestDistance - bestDistance < 20) {
-        ambiguousMatches.add(opStopId);
-      }
+      if (bestGtfsId == null || bestDistance > maxDistanceMeters) continue;
 
       batch.insert("stop_mapping", {
         "operator_stop_id": opStopId,
@@ -349,6 +372,9 @@ class GtfsDatabase {
 
     if (ambiguousMatches.isNotEmpty) {
       print("${ambiguousMatches.length} operator stops matched ambigiously (top 2 candidates within 20m): ${ambiguousMatches.join(", ")}");
+    }
+    if (noMatches.isNotEmpty) {
+      print("${noMatches.length} matched by proximity only (no name match found): ${noMatches.join(", ")}");
     }
   }
   
@@ -384,7 +410,7 @@ class GtfsDatabase {
     INNER JOIN gtfs_calendar c ON t.service_id = c.service_id
     WHERE st.stop_id = ?
       AND st.arrival_time > ?
-      AND c.${currentDayColumn} = 1
+      AND c.$currentDayColumn = 1
       AND c.start_date <= ?
       AND c.end_date >= ?
     ORDER BY st.arrival_time ASC
@@ -409,13 +435,17 @@ class GtfsDatabase {
     return rows.map((row) => GtfsStop(id: row["stop_id"] as String, name: row["stop_name"] as String, lat: row["stop_lat"] as double, lng: row["stop_lon"] as double)).toList();
   }
 
-  Future<List<BusRoute>> getRoutesForGtfsStop(String gtfsStopId) async {
+  Future<List<BusRoute>> getRoutesForGtfsStop(String gtfsStopId) async { // todo check query on circular routes
     final rows = await (await database).rawQuery('''
     SELECT DISTINCT r.*
     FROM operator_routes r
     INNER JOIN route_stops rs ON rs.operator_route_id = r.operator_route_id
     INNER JOIN stop_mapping sm ON sm.operator_stop_id = rs.operator_stop_id
-    WHERE sm.gtfs_stop_id = ? 
+    WHERE sm.gtfs_stop_id = ? AND rs.stop_sequence < (
+      SELECT MAX(rs2.stop_sequence)
+      FROM route_stops rs2
+      WHERE rs2.operator_route_id = rs.operator_route_id
+    )
     ''', [gtfsStopId]);
     
     return rows.map((row) => BusRoute(
@@ -437,10 +467,20 @@ class GtfsDatabase {
     SELECT sm.operator_stop_id
     FROM stop_mapping sm
     INNER JOIN operator_stops os ON os.operator_stop_id = sm.operator_stop_id
-    WHERE ${where}
+    WHERE $where
     ''', whereArgs);
     
     return rows.map((r) => r["operator_stop_id"] as String).toList();
+  }
+
+  Future<List<String>> getRouteNumbersForOperatorStop(String operatorStopId) async {
+    final rows = await (await database).rawQuery('''
+    SELECT r.route_number
+    FROM route_stops rs
+    INNER JOIN operator_routes r ON r.operator_route_id = rs.operator_route_id
+    WHERE rs.operator_stop_id = ?
+    ''', [operatorStopId]);
+    return rows.map((row) => row["route_number"] as String).toList();
   }
 
   Future<void> clearAllTables() async {
@@ -459,7 +499,7 @@ class GtfsDatabase {
     }
     _databases.remove(locale);
     final dir = await getApplicationDocumentsDirectory();
-    final file = File("${dir.path}/gtfs/${locale}.db");
+    final file = File("${dir.path}/gtfs/$locale.db");
     if (await file.exists()) {
       await file.delete();
     }

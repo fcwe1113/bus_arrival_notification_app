@@ -59,6 +59,6 @@ class TransitCacheService {
 
   Future<File> _fileFor(String providerCode, String endpoint) async { // the code that enforces file structure
     final dir = await getApplicationDocumentsDirectory(); // dir.path likely /data/data/com.fcwe1113.bus_arrival_notification_app/app_flutter
-    return File("${dir.path}/transit_cache/${providerCode}/${endpoint}.json");
+    return File("${dir.path}/transit_cache/$providerCode/$endpoint.json");
   }
 }
