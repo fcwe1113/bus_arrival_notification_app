@@ -6,9 +6,11 @@ import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
 import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:bus_arrival_notification_app/transit/transit_provider.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../models/live_eta.dart';
+import '../../../models/route_colour_scheme.dart';
 import '../../../progress_callback.dart';
 import '../../../refresh_result.dart';
 
@@ -27,6 +29,28 @@ class CtbProvider extends TransitProvider{
   Color get defaultIconColor => const Color(0xFFFFD200);
   @override
   Color get defaultTextColor => const Color(0xFF002FFF);
+
+  @override
+  RouteColourScheme coloursForRoute(BusRoute route) {
+
+    bool _isAirportRoute(BusRoute route) {
+      return route.routeNumber.startsWith("A");
+    }
+
+    bool _isNightRoute(BusRoute route) {
+      return route.routeNumber.startsWith("N");
+    }
+
+    if (_isAirportRoute(route)) {
+      return const RouteColourScheme(iconColour: Color(0xFF822905), textColour: Color(0xFFD6B706));
+    }
+
+    if (_isNightRoute(route)) {
+      return const RouteColourScheme(iconColour: Color(0xFF090740), textColour: Color(0xFFFFD200));
+    }
+
+    return super.coloursForRoute(route);
+  }
   
   Future<List<BusRoute>> _fetchRoutes({bool forceRefresh = false}) async {
     final routes = await _apiCaller.call(
@@ -40,7 +64,7 @@ class CtbProvider extends TransitProvider{
   }
   
   @override
-  Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress}) async { // todo check ram use
+  Future<RefreshResult> refresh({bool forceRefresh = false, ProgressCallback? onProgress}) async {
     final db = GtfsDatabase.forLocale("hk");
     onProgress?.call("Fetching Citybus routes...", null);
     final routes = await _fetchRoutes(forceRefresh: forceRefresh);

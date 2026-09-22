@@ -9,7 +9,7 @@ Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool f
   final allFailures = <String>[];
   final selectionService = LocaleSelectionService();
   final enabledLocales = await selectionService.getEnabledLocales();
-  final enabledProviders = providersForLocales(enabledLocales); // todo fix this line resulting in zero enabled providers
+  final enabledProviders = providersForLocales(enabledLocales);
   final gtfsProviders = LocaleGtfsRegistry.getProvidersForLocale(enabledLocales);
 
   for (final provider in gtfsProviders) {

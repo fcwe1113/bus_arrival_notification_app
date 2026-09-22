@@ -22,7 +22,7 @@ class GtfsSyncService {
     _db = GtfsDatabase.forLocale(locale);
   }
 
-  Future<void> parseAndStoreGtfsArchive(File zipFile, ProgressCallback? onProgress) async { // todo
+  Future<void> parseAndStoreGtfsArchive(File zipFile, ProgressCallback? onProgress) async {
     onProgress?.call("Updating gtfs data", null);
     final requiredFiles = ["routes.txt", "trips.txt", "calendar.txt", "stop_times.txt", "stops.txt"]; // only read required files
     final inputStream = InputFileStream(zipFile.path);
