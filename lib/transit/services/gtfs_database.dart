@@ -301,40 +301,64 @@ class GtfsDatabase {
     final db = await database;
     final operatorRows = await db.query("operator_stops", where: "lat IS NOT NULL AND lng IS NOT NULL");
     final gtfsRows = await db.query("gtfs_stops");
+    
+    final nameIndex = <String, List<Map<String, dynamic>>>{};
+    for (final gRow in gtfsRows) {
+      final rawName = gRow["stop_name"] as String;
+      for (final fragment in GtfsStop.extractNameFragments(rawName)) {
+        final key = GtfsStop.normalizeForMatching(fragment);
+        nameIndex.putIfAbsent(key, () => []).add(gRow);
+      }
+    }
 
     final batch = db.batch();
     final ambiguousMatches = <String>[];
+    final noMatches = <String>[];
 
     for (final opRow in operatorRows) {
       final opStopId = opRow["operator_stop_id"] as String;
       final opLat = opRow["lat"] as double;
       final opLng = opRow["lng"] as double;
+      final opName = (jsonDecode(opRow["names"] as String) as Map<String, dynamic>)["en"] as String? ?? "";
+      
+      final normalizedOpName = GtfsStop.normalizeForMatching(opName);
+      final nameCandidates = nameIndex[normalizedOpName] ?? [];
 
       String? bestGtfsId;
-      double bestDistance = double.infinity;
-      double secondBestDistance = double.infinity;
-
-      for (final gRow in gtfsRows) {
-        final gLat = gRow["stop_lat"] as double;
-        final gLng = gRow["stop_lon"] as double;
-        final distance = haversineDistanceMeters(opLat, opLng, gLat, gLng);
-
-        if (distance < bestDistance) {
-          secondBestDistance = bestDistance;
-          bestDistance = distance;
-          bestGtfsId = gRow["stop_id"] as String;
-        } else if (distance < secondBestDistance) {
-          secondBestDistance = distance;
+      double bestDistance;
+      
+      if (nameCandidates.length == 1) {
+        bestGtfsId = nameCandidates.first["stop_id"] as String;
+        bestDistance = haversineDistanceMeters(opLat, opLng, nameCandidates.first["stop_lat"] as double, nameCandidates.first["stop_lon"] as double
+        );
+      } else if (nameCandidates.length > 1) {
+        bestGtfsId = null;
+        bestDistance = double.infinity;
+        for (final candidate in nameCandidates) {
+          final d = haversineDistanceMeters(opLat, opLng, candidate["stop_lat"] as double, candidate["stop_lon"] as double
+          );
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestGtfsId = candidate["stop_id"] as String;
+          }
         }
+        ambiguousMatches.add("${opStopId} (name matched ${nameCandidates.length} GTFS stops, picked nearest)");
+      } else {
+        bestGtfsId = null;
+        bestDistance = double.infinity;
+        for (final gRow in gtfsRows) {
+          final d = haversineDistanceMeters(opLat, opLng,
+              gRow["stop_lat"] as double, gRow["stop_lon"] as double
+          );
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestGtfsId = gRow["stop_id"] as String;
+          }
+        }
+        noMatches.add(opStopId);
       }
 
-      if (bestGtfsId == null || bestDistance > maxDistanceMeters) {
-        continue;
-      }
-
-      if (secondBestDistance - bestDistance < 20) {
-        ambiguousMatches.add(opStopId);
-      }
+      if (bestGtfsId == null || bestDistance > maxDistanceMeters) continue;
 
       batch.insert("stop_mapping", {
         "operator_stop_id": opStopId,
@@ -348,6 +372,9 @@ class GtfsDatabase {
 
     if (ambiguousMatches.isNotEmpty) {
       print("${ambiguousMatches.length} operator stops matched ambigiously (top 2 candidates within 20m): ${ambiguousMatches.join(", ")}");
+    }
+    if (noMatches.isNotEmpty) {
+      print("${noMatches.length} matched by proximity only (no name match found): ${noMatches.join(", ")}");
     }
   }
   

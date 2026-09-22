@@ -20,7 +20,7 @@ class StopRoutesSheet extends StatelessWidget{
       height: MediaQuery.of(context).size.height * 0.5,
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(stop.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),), // todo check names locale
+        Text(GtfsStop.cleanStopName(stop.name), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),), // todo check names locale
         const SizedBox(height: 12,),
         FutureBuilder(future: db.getRoutesForGtfsStop(stop.id), builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -131,6 +131,7 @@ class StopRoutesSheet extends StatelessWidget{
     arrivals.sort((a, b) => a.minutesFromNow.compareTo(b.minutesFromNow));
     return arrivals;
   }
+
 }
 
 class _RoutePill extends StatelessWidget {
