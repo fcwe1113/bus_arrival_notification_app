@@ -8,7 +8,6 @@ import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.
 import 'package:bus_arrival_notification_app/transit/refresh_result.dart';
 import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
 import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:bus_arrival_notification_app/transit/services/transit_update_scheduler.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 

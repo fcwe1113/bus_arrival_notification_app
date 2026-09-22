@@ -67,7 +67,7 @@ class StopRoutesSheet extends StatelessWidget{
   }
 
   Future<List<LiveEta>> _fetchLiveEtaForStop(GtfsStop stop) async {
-    final operatorStopIds = await GtfsDatabase.forLocale("hk").getOperatorStopIds(stop.id, providerCode: "kmb"); // todo fix hardcode
+    final operatorStopIds = await GtfsDatabase.forLocale("hk").getOperatorStopIds(stop.id); // todo fix hardcode
 
     final idsByProvider = <String,List<String>>{};
     for (final operatorStopId in operatorStopIds) {

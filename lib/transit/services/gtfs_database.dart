@@ -443,6 +443,16 @@ class GtfsDatabase {
     return rows.map((r) => r["operator_stop_id"] as String).toList();
   }
 
+  Future<List<String>> getRouteNumbersForOperatorStop(String operatorStopId) async {
+    final rows = await (await database).rawQuery('''
+    SELECT r.route_number
+    FROM route_stops rs
+    INNER JOIN operator_routes r ON r.operator_route_id = rs.operator_route_id
+    WHERE rs.operator_stop_id = ?
+    ''', [operatorStopId]);
+    return rows.map((row) => row["route_number"] as String).toList();
+  }
+
   Future<void> clearAllTables() async {
     final db = await database;
     await db.transaction(((txn) async {
