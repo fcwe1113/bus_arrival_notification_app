@@ -211,12 +211,21 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
             ),),
             const SizedBox(height: 16,)
           ],
+
+          // how early to ring
+          Row(children: [
+            const Text("Minutes away to ring: ", style: TextStyle(fontWeight: FontWeight.bold),),
+            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()),))
+          ],),
+          const SizedBox(height: 24,),
+
           // max ring attempts
           Row(children: [
             const Text("Max ring attempts: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()),))
+            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()),))
           ],),
           const SizedBox(height: 24,),
+
           // horizontal 4 way repeat selector
           const Text("Repeat Pattern", style: TextStyle(fontWeight: FontWeight.bold),),
           const SizedBox(height: 8,),
@@ -282,7 +291,15 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
                 _liveOnly = val;
               });
             }
-          )
+          ),
+          const SizedBox(height: 12,),
+
+          // max ring attempts
+          Row(children: [
+            const Text("Custom Message: ", style: TextStyle(fontWeight: FontWeight.bold),),
+            Expanded(child: TextFormField(
+              decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()), initialValue: "Wake Up!",))
+          ],),
         ],)
     );
   }
