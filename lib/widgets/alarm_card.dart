@@ -13,7 +13,7 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
   const AlarmCard({super.key, required this.alarm, required this.onToggle});
 
   bool get _withinActiveWindow {
-    final now = DateTime.now();
+    final now = TimeOfDay.now();
     return now.isAfter(alarm.windowStart) && now.isBefore(alarm.windowEnd);
   }
 
@@ -34,7 +34,7 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
                       final name = snapshot.data?.name ?? "...";
                       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(name, style: const TextStyle(fontWeight: FontWeight.bold,)),
-                        Text("${_formatTime(alarm.windowStart)} - ${_formatTime(alarm.windowEnd)}", style: TextStyle(color: Colors.grey.shade600, fontSize: 12),)
+                        Text("${alarm.windowStart.toString()} - ${alarm.windowEnd.toString()}", style: TextStyle(color: Colors.grey.shade600, fontSize: 12),)
                       ],);
                     })
                 ),
@@ -48,6 +48,4 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
       ),
     );
   }
-
-  String _formatTime(DateTime dt) => "${dt.hour.toString().padLeft(2, "0")}:${dt.minute.toString().padLeft(2, "0")}";
 }

@@ -1,4 +1,5 @@
 import 'package:bus_arrival_notification_app/transit/models/threshold_state.dart';
+import 'package:flutter/material.dart';
 
 import '../transit/models/repeat_pattern.dart';
 
@@ -7,8 +8,8 @@ class BusAlarm {
   final String id; // maybe gen a uuid for it or something, this is local anyways so whatever
   final List<String> routeNumbers; // stores raw route numbers for deduping
   final String gtfsStopId;
-  final DateTime windowStart;
-  final DateTime windowEnd;
+  final TimeOfDay windowStart;
+  final TimeOfDay windowEnd;
   final List<ThresholdState> thresholdStates; // ordered
   final int maxRingsPerThreshold;
   final RepeatPattern repeat;
@@ -31,8 +32,8 @@ class BusAlarm {
   BusAlarm copyWith({
     String? gtfsStopId,
     List<String>? routeNumbers,
-    DateTime? windowStart,
-    DateTime? windowEnd,
+    TimeOfDay? windowStart,
+    TimeOfDay? windowEnd,
     int? maxRingsPerThreshold,
     List<ThresholdState>? thresholdStates,
     RepeatPattern? repeat,
@@ -56,8 +57,8 @@ class BusAlarm {
     'id': id,
     'gtfsStopId': gtfsStopId,
     'routeNumbers': routeNumbers,
-    'windowStart': windowStart.toIso8601String(),
-    'windowEnd': windowEnd.toIso8601String(),
+    'windowStart': windowStart.hour * 60 + windowStart.minute,
+    'windowEnd': windowEnd.hour * 60 + windowEnd.minute,
     'maxRingsPerThreshold': maxRingsPerThreshold,
     'thresholdStates': thresholdStates.map((t) => t.toJson()).toList(),
     'repeat': repeat.toJson(),
@@ -69,14 +70,17 @@ class BusAlarm {
     id: json['id'] as String,
     gtfsStopId: json['gtfsStopId'] as String,
     routeNumbers: List<String>.from(json['routeNumbers']),
-    windowStart: DateTime.parse(json['windowStart'] as String),
-    windowEnd: DateTime.parse(json['windowEnd'] as String),
+    windowStart: _minutesToTimeOfDay(json['windowStart'] as int),
+    windowEnd: _minutesToTimeOfDay(json['windowEnd'] as int),
     maxRingsPerThreshold: json['maxRingsPerThreshold'] as int,
     thresholdStates: (json['thresholdStates'] as List).map((t) => ThresholdState.fromJson(t as Map<String, dynamic>)).toList(),
     repeat: RepeatPattern.fromJson(json['repeat'] as Map<String, dynamic>),
     liveOnly: json['liveOnly'] as bool,
     enabled: json['enabled'] as bool,
   );
+
+  static TimeOfDay _minutesToTimeOfDay (int totalMinutes) =>
+    TimeOfDay(hour: totalMinutes ~/ 60, minute: totalMinutes % 60);
 }
 
 // IOS alarm workflow

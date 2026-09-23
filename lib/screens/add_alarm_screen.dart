@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
@@ -18,8 +16,11 @@ class AddAlarmScreen extends StatefulWidget{
 }
 
 class _AddAlarmScreenState extends State<AddAlarmScreen> {
-  DateTime _leftTime = DateTime.now();
-  DateTime _rightTime = DateTime.now().add(Duration(minutes: 15));
+  TimeOfDay _leftTime = TimeOfDay.now();
+  TimeOfDay _rightTime = TimeOfDay.now().replacing(
+      minute: (TimeOfDay.now().minute + 15) % 60,
+      hour: TimeOfDay.now().hour + (TimeOfDay.now().minute + 15 >= 60 ? 1 : 0)
+  );
   int _sliderMinutes = 15;
 
   bool _isLoadingStops = true;
@@ -58,19 +59,19 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
     });
   }
 
-  void _onLeftTimeChanged(DateTime newLeft) {
+  void _onLeftTimeChanged(TimeOfDay newLeft) {
     // if (newLeft.isAfter(_rightTime)) newLeft.subtract(Duration(days: 1));
-    final diff = _rightTime.difference(_leftTime);
+    final diff = _toMinutes(_rightTime) - _toMinutes(_leftTime);
     setState(() {
-      _rightTime = newLeft.add(diff);
+      _rightTime = _fromMinutes(_toMinutes(newLeft) + diff);
       _leftTime = newLeft;
     });
   }
 
-  void _onRightTimeChanged(DateTime newRight) {
-    if (newRight.isBefore(_leftTime)) newRight = newRight.add(Duration(days: 1)); // add one day if newRight is "before" the left time
-    final diff = _rightTime.difference(_leftTime);
-    _onSliderChanged((diff.inMinutes.abs() > 60 ? 60 : diff.inMinutes.abs()) + 0.0);
+  void _onRightTimeChanged(TimeOfDay newRight) {
+    // if (newRight.isBefore(_leftTime)) newRight = newRight.add(Duration(days: 1)); // add one day if newRight is "before" the left time
+    final diff = (_toMinutes(newRight) - _toMinutes(_leftTime)) < 0 ? 1440 + (_toMinutes(newRight) - _toMinutes(_leftTime)) : (_toMinutes(newRight) - _toMinutes(_leftTime));
+    _onSliderChanged((diff > 60 ? 60 : diff) + 0.0);
     setState(() {
       _rightTime = newRight;
     });
@@ -79,7 +80,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   void _onSliderChanged(double newMinutes) {
     setState(() {
       _sliderMinutes = newMinutes.round();
-      _rightTime = _leftTime.add(Duration(minutes: _sliderMinutes));
+      _rightTime = _fromMinutes(_toMinutes(_leftTime) + _sliderMinutes ~/ 1);
     });
   }
 
@@ -89,16 +90,13 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   }
 
   void _compileAndSave() { // todo hook up to actual alarm save function
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day, _leftTime.hour, _leftTime.minute, 0);
-    final end = DateTime(now.year, now.month, now.day, _rightTime.hour, _rightTime.minute, 0);
 
     final newAlarm = BusAlarm(
         id: "000001", // todo define later
         gtfsStopId: _selectedStop!.id,
         routeNumbers: _selectedRoutes.map((r) => r.routeNumber).toList(),
-        windowStart: start,
-        windowEnd: end,
+        windowStart: _leftTime,
+        windowEnd: _rightTime,
         thresholdStates: [ThresholdState(minutesBeforeArrival: 5)],
         repeat: _repeatPattern,
         liveOnly: _liveOnly,
@@ -118,15 +116,13 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               const SizedBox(height: 12,),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 OutlinedButton.icon(onPressed: () async {
-                  final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_leftTime));
-                  final now = DateTime.now();
-                  if (picked != null) _onLeftTimeChanged(DateTime(now.year, now.month, now.day, picked.hour, picked.minute, 0));
+                  final picked = await showTimePicker(context: context, initialTime: _leftTime);
+                  if (picked != null) _onLeftTimeChanged(picked);
                 }, label: Text("${_leftTime.hour.toString().padLeft(2, "0")}:${_leftTime.minute.toString().padLeft(2, "0")}"), icon: const Icon(Icons.access_time),),
                 const Icon(Icons.arrow_forward, size: 20,),
                 OutlinedButton.icon(onPressed: () async {
-                  final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_rightTime));
-                  final now = DateTime.now();
-                  if (picked != null) _onRightTimeChanged(DateTime(now.year, now.month, now.day, picked.hour, picked.minute, 0));
+                  final picked = await showTimePicker(context: context, initialTime: _rightTime);
+                  if (picked != null) _onRightTimeChanged(picked);
                 }, label: Text("${_rightTime.hour.toString().padLeft(2, "0")}:${_rightTime.minute.toString().padLeft(2, "0")}"), icon: const Icon(Icons.access_time))
               ],),
               const SizedBox(height: 12,),
@@ -155,7 +151,8 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
             displayStringForOption: (GtfsStop option) => GtfsStop.cleanStopName(option.name),
             optionsBuilder: (TextEditingValue value) {
               if (value.text.isEmpty) return _loadedStops;
-              return _loadedStops.where((s) => GtfsStop.cleanStopName(s.name).toLowerCase().contains(GtfsStop.cleanStopName(value.text).toLowerCase()));
+              final query = value.text.toLowerCase().trim();
+              return _loadedStops.where((s) => GtfsStop.cleanStopName(s.name).toLowerCase().contains(query));
             },
             onSelected: (GtfsStop selection) async {
               final Set<BusRoute> _routeList = Set.from(await GtfsDatabase.forLocale("hk").getRoutesForGtfsStop(selection.id));
@@ -303,5 +300,8 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
         ],)
     );
   }
+
+  int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+  TimeOfDay _fromMinutes(int m) => TimeOfDay(hour: (m ~/ 60) % 24, minute: m % 60);
 
 }
