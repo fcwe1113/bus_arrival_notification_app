@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS scheduled_pings (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	device_token TEXT NOT NULL,
+	scheduled_time INTEGER NOT NULL,
+	require_ack BOOLEAN NOT NULL,
+	status TEXT NOT NULL DEFAULT "PENDING",
+	last_sent_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_pending_pings ON scheduled_pings (status, scheduled_time);

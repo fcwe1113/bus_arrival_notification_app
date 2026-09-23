@@ -1,0 +1,23 @@
+{
+  "name": "ios-scheduler",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "test": "vitest",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.0.0",
+    "@cloudflare/workers-types": "^5.20260923.1",
+    "@types/node": "^26.6.2",
+    "typescript": "^5.9.3",
+    "vitest": "~4.1.0",
+    "wrangler": "^4.137.0"
+  },
+  "dependencies": {
+    "@tsndr/cloudflare-worker-jwt": "^3.2.3"
+  }
+}

@@ -1,3 +1,4 @@
+import 'package:bus_arrival_notification_app/screens/add_alarm_screen.dart';
 import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
 import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
@@ -47,6 +48,7 @@ class MyApp extends StatelessWidget { // statelesswidget only has constant inter
         "/map": (context) => const MapScreen(),
         "/setup": (context) => const SetupScreen(),
         "/loading": (context) => const LoadingScreen(),
+        "/add-alarm": (context) => const AddAlarmScreen(),
         // add more routes here as we add more screens
       },
     );
