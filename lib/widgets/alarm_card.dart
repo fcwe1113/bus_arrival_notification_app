@@ -1,5 +1,8 @@
 import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
+import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
+
+import '../transit/models/gtfs_stop.dart';
 
 /// the per alarm display on the alarm list screen
 /// basically the gui template for each given alarm
@@ -7,14 +10,16 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
   final BusAlarm alarm;
   final ValueChanged<bool> onToggle; // callback for a value changing
 
-  const AlarmCard({
-    super.key,
-    required this.alarm,
-    required this.onToggle
-  });
+  const AlarmCard({super.key, required this.alarm, required this.onToggle});
+
+  bool get _withinActiveWindow {
+    final now = DateTime.now();
+    return now.isAfter(alarm.windowStart) && now.isBefore(alarm.windowEnd);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final db = GtfsDatabase.forLocale("hk"); // todo fix locale hardcode
     return Card( // groups up everything within visually
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Padding(
@@ -25,28 +30,24 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
             Row( // ros inside column
               children: [
                 Expanded(
-                    child: Column( // column inside row inside column
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(alarm.operatorRouteId),
-                        Text(alarm.gtfsStopId),
-                        Text("${alarm.nextArrival}")
-                      ],
-                    ),
+                    child: FutureBuilder<GtfsStop?>(future: db.getGtfsStopById(alarm.gtfsStopId), builder: (context, snapshot) {
+                      final name = snapshot.data?.name ?? "...";
+                      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold,)),
+                        Text("${_formatTime(alarm.windowStart)} - ${_formatTime(alarm.windowEnd)}", style: TextStyle(color: Colors.grey.shade600, fontSize: 12),)
+                      ],);
+                    })
                 ),
                 Switch(value: alarm.enabled, onChanged: onToggle), // hooking up the callback to the alarm's enabled bool
               ],
             ),
-            if (alarm.enabled) ...[ // conditionally show elements within, ... indicates multiple elements were affected by this if
-              // todo fix the condition once we got the time range down
-              const SizedBox(height: 8,),
-              LinearProgressIndicator(value: 0.7), // todo
-              const SizedBox(height: 8,),
-            ],
-            Text("every fridays trust") // todo replace with actual setting
+            const SizedBox(height: 8,),
+            
           ],
         ),
       ),
     );
   }
+
+  String _formatTime(DateTime dt) => "${dt.hour.toString().padLeft(2, "0")}:${dt.minute.toString().padLeft(2, "0")}";
 }
