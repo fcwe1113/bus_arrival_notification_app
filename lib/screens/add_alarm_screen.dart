@@ -36,6 +36,10 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   final Set<int> _selectedWeekdays = {1, 2, 3, 4, 5}; // 1 = mon ... 7 = sun
   late TextEditingController _monthlyDayController;
 
+  String _ringThreshhold = "";
+  String _maxRingAttempts = "10";
+  String _customRingMessage = "Wake Up!";
+
   bool _liveOnly = false;
 
   @override
@@ -93,7 +97,15 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
       _selectedStop = picked;
       _availableRoutes = routeList;
       _selectedRoutes = {};
+      _searchController.clear();
+      _searchController.text = GtfsStop.cleanStopName(_selectedStop!.name);
     });
+  }
+
+  void _alarmValidityChecker() { // todo write alarm validity check
+    print("${_leftTime.hour}:${_leftTime.minute} - ${_rightTime.hour}:${_rightTime.minute}\n${_selectedStop!.id}\n${_selectedRoutes.map((r) => r.routeNumber).toList()}\n${_ringThreshhold}\n${_maxRingAttempts}\n${_liveOnly}\n${_repeatPattern.frequency}");
+
+
   }
 
   void _compileAndSave() { // todo hook up to actual alarm save function
@@ -113,8 +125,8 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   }
 
   @override
-  Widget build(BuildContext context) { // todo write alarm validity check
-    return AppShell(title: "Add a new alarm", actions: [IconButton(onPressed: () => {}, icon: const Icon(Icons.check))],
+  Widget build(BuildContext context) {
+    return AppShell(title: "Add a new alarm", actions: [IconButton(onPressed: _alarmValidityChecker, icon: const Icon(Icons.check))],
         body: ListView(padding: const EdgeInsets.all(16), children: [
           // time range selector slider
           Card(child: Padding(padding: const EdgeInsetsGeometry.all(16), child:
@@ -147,7 +159,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           const SizedBox(height: 12,),
 
           // bus stop search bar
-          Row(children: [Expanded(child: _isLoadingStops ? TextField(
+          Row(children: [Expanded(child: _isLoadingStops ? TextFormField(
             enabled: false,
             decoration: InputDecoration(hintText: "Loading...", prefixIcon: const SizedBox(
               width: 20,
@@ -170,6 +182,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               });
             },
             fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+              controller = _searchController;
               return TextField(
                 controller: controller,
                 focusNode: focusNode,
@@ -219,14 +232,24 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // how early to ring
           Row(children: [
             const Text("Minutes away to ring: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder(), hintText: "e.g. \"8\" or \"15, 12\""),))
+            Expanded(child: TextFormField(decoration: const InputDecoration(
+                isDense: true, border: UnderlineInputBorder(),
+                hintText: "e.g. \"8\" or \"15, 12\""
+            ), onChanged: (value) {setState(() {
+              _ringThreshhold = value;
+            });}, initialValue: _ringThreshhold,))
           ],),
           const SizedBox(height: 24,),
 
           // max ring attempts
           Row(children: [
             const Text("Max ring attempts: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()), initialValue: "10",))
+            Expanded(child: TextFormField(decoration: const InputDecoration(
+                isDense: true,
+                border: UnderlineInputBorder()
+            ), onChanged: (value) {setState(() {
+              _maxRingAttempts = value;
+            });}, initialValue: _maxRingAttempts,))
           ],),
           const SizedBox(height: 24,),
 
@@ -301,8 +324,14 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // max ring attempts
           Row(children: [
             const Text("Custom Message: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(
-              decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()), initialValue: "Wake Up!",))
+            Expanded(child: TextFormField(decoration: const InputDecoration(
+                isDense: true,
+                border: UnderlineInputBorder()
+            ), onChanged: (value) {
+              setState(() {
+                _customRingMessage = value;
+              });
+            }, initialValue: _customRingMessage,))
           ],),
         ],)
     );
