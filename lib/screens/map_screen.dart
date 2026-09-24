@@ -40,6 +40,7 @@ class _MapScreenState extends State<MapScreen> {
   final Set<Polyline> _routePolylines = {};
   BitmapDescriptor? _stopIcon;
   GtfsStop? _selectedPickerStop;
+  final GlobalKey<NavigatorState> _nestedNavKey = GlobalKey<NavigatorState>();
 
   static const _stopIconAsset = "assets/icons/icon.png";
 
@@ -97,7 +98,7 @@ class _MapScreenState extends State<MapScreen> {
         _mapPadding = EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5); // 0.4
       });
       showModalBottomSheet(
-          context: context,
+          context: _nestedNavKey.currentContext!,
           barrierColor: Colors.transparent,
           isScrollControlled: true,
           builder: (context) => StopRoutesSheet(stop: stop, pickerMode: true)
@@ -166,19 +167,25 @@ class _MapScreenState extends State<MapScreen> {
     return AppShell(
       title: widget.pickerMode ? "Choose a stop" : "Map",
       actions: widget.pickerMode && _selectedPickerStop != null ? [
-        IconButton(icon: const Icon(Icons.check), onPressed: () => Navigator.pop(context, _selectedPickerStop),),
+        IconButton(icon: const Icon(Icons.check), onPressed: () {
+          final mapRoute = ModalRoute.of(context);
+          if (mapRoute != null && !mapRoute.isCurrent) {
+            Navigator.of(context).pop();
+          }
+          Navigator.pop(context, _selectedPickerStop);
+        },),
       ] : null,
-      body: GoogleMap(
-        padding: _mapPadding, // not working for some reason
-        initialCameraPosition: const CameraPosition(target: LatLng(22.3193, 114.1694), zoom: 12),
-        onMapCreated: (controller) {
-          _mapController = controller;
-          _updateVisibleMarkers();
-        },
+      body: Navigator(key: _nestedNavKey, onGenerateRoute: (settings) => MaterialPageRoute(builder: (nestedContext) => GoogleMap(
+          padding: _mapPadding, // not working for some reason
+          initialCameraPosition: const CameraPosition(target: LatLng(22.3193, 114.1694), zoom: 12),
+          onMapCreated: (controller) {
+            _mapController = controller;
+            _updateVisibleMarkers();
+          },
           onCameraIdle: _updateVisibleMarkers,
-        myLocationEnabled: true, // enables phone location services
-        markers: _visibleMarkers
-      ),
+          myLocationEnabled: true, // enables phone location services
+          markers: _visibleMarkers
+      ),),)
     );
   }
 }
