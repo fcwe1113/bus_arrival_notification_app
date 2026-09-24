@@ -1,3 +1,5 @@
+import 'package:bus_arrival_notification_app/screens/add_alarm_screen.dart';
+import 'package:bus_arrival_notification_app/services/alarm_storage_service.dart';
 import 'package:bus_arrival_notification_app/widgets/alarm_card.dart';
 import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +20,7 @@ class AlarmListScreen extends StatefulWidget {
 /// State object within the alarm list screen
 class _AlarmListScreenState extends State<AlarmListScreen> {
   List<BusAlarm> _alarms = [];
+  bool _isEditing = false;
 
   @override
   void initState() {
@@ -25,12 +28,11 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     _loadAlarms();
   }
 
-  void _loadAlarms() { // todo make it read the alarm list once it exist
-    // idk read from the alarm list json or something
-    // for now we make a dummy alarm for testing purposes
-    // throw UnimplementedError();
-
-    _alarms = [BusAlarm(id: "00001", operatorRouteId: "41", gtfsStopId: "1234", enabled: false, nextArrival: 12)];
+  Future<void> _loadAlarms() async {
+    final alarmList = await AlarmStorageService().loadAlarms();
+    setState(() {
+      _alarms = alarmList;
+    });
   }
 
   /// Event trigger for switching alarm enabled bool
@@ -40,17 +42,52 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     });
   }
 
+  void _deleteAlarm(int index) async {
+    await AlarmStorageService().deleteAlarm(_alarms[index].id);
+    setState(() {
+      _alarms.remove(_alarms[index]);
+    });
+  }
+
+  Future<void> _editAlarm(BusAlarm alarm, int index) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (context) => AddAlarmScreen(alarmToEdit: alarm,)));
+    await _loadAlarms();
+  }
+
+  Future<void> _navigateToAddAlarm() async {
+    await Navigator.pushNamed(context, "/add-alarm");
+    await _loadAlarms();
+  }
+
   /// Draws the screen
   @override
   Widget build(BuildContext context) {
-    return AppShell(title: "Alarm List", body: ListView.builder(
-        itemCount: _alarms.length,
-        itemBuilder: (context, index) {
-      final alarm = _alarms[index];
-      return AlarmCard(
-        alarm: alarm,
-        onToggle: (_) => _toggleAlarm(index),
-      );
-    }));
+    return AppShell(
+        title: "Alarm List",
+        actions: [ if (_isEditing) IconButton(
+          onPressed: _navigateToAddAlarm,
+          icon: const Icon(Icons.add)), TextButton(onPressed: () {
+            setState(() {
+              _isEditing = !_isEditing;
+            });
+          }, child: Text(
+            _isEditing ? "Done" : "Edit",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ))],
+          body: _alarms.isEmpty ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text("Alarm List empty", style: TextStyle(color: Colors.grey.shade600, fontSize: 32),),
+            const SizedBox(height: 12,),
+            ElevatedButton.icon(onPressed: _navigateToAddAlarm, icon: Icon(Icons.add), label: const Text("Add Alarm"),)
+          ],),) : ListView.builder(itemCount: _alarms.length, itemBuilder: (context, index) {
+            final alarm = _alarms[index];
+            return AlarmCard(
+              alarm: alarm,
+              isEditing: _isEditing,
+              onToggle: (_) => _toggleAlarm(index),
+              onDelete: () => _deleteAlarm(index),
+              onTap: _isEditing ? () => _editAlarm(alarm, index) : null,
+            );
+          })
+    );
   }
 }

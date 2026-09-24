@@ -1,0 +1,46 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
+import 'package:path_provider/path_provider.dart';
+
+class AlarmStorageService {
+  Future<File> _file() async {
+    return File("${(await getApplicationDocumentsDirectory()).path}/alarms.json");
+  }
+
+  Future<List<BusAlarm>> loadAlarms() async {
+    final file = await _file();
+    if (!await file.exists()) return [];
+    final rawJson = await file.readAsString();
+    final List<dynamic> data = jsonDecode(rawJson);
+    return data.map((a) => BusAlarm.fromJson(a as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> saveAlarms(List<BusAlarm> alarms) async {
+    final file = await _file();
+    await file.create(recursive: true);
+    final jsonList = alarms.map((a) => a.toJson()).toList();
+    await file.writeAsString(jsonEncode(jsonList));
+  }
+
+  Future<void> addAlarm(BusAlarm alarm) async {
+    final alarms = await loadAlarms();
+    alarms.add(alarm);
+    await saveAlarms(alarms);
+  }
+
+  Future<void> updateAlarm(BusAlarm updated) async {
+    final alarms = await loadAlarms();
+    final index = alarms.indexWhere((a) => a.id == updated.id);
+    if (index == -1) return; // todo check functionality
+    alarms[index] = updated;
+    await saveAlarms(alarms);
+  }
+
+  Future<void> deleteAlarm(String id) async {
+    final alarms = await loadAlarms();
+    alarms.removeWhere((a) => a.id == id);
+    await saveAlarms(alarms);
+  }
+}

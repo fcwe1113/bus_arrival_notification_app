@@ -13,7 +13,9 @@ import '../widgets/stop_routes_sheet.dart';
 
 /// StatefulWidget wrapper for the map screen
 class MapScreen extends StatefulWidget { // statefulwidgets are widgets that can have modifiable internal data, they contain an immutable Widget and a mutable State object within
-  const MapScreen({super.key});
+  final bool pickerMode;
+
+  const MapScreen({super.key, this.pickerMode = false});
 
   @override // this is a requirement for any statefulwidget
   State<MapScreen> createState() => _MapScreenState(); // MapScreen being the immutable widget and _MapScreenState() being the mutable state
@@ -37,6 +39,8 @@ class _MapScreenState extends State<MapScreen> {
   GtfsStop? selectedStop;
   final Set<Polyline> _routePolylines = {};
   BitmapDescriptor? _stopIcon;
+  GtfsStop? _selectedPickerStop;
+  final GlobalKey<NavigatorState> _nestedNavKey = GlobalKey<NavigatorState>();
 
   static const _stopIconAsset = "assets/icons/icon.png";
 
@@ -78,23 +82,35 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _onStopTapped(GtfsStop stop) async {
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat, stop.lng), 17))
-    // });
-
-    // print("stop id ${stop.id} pressed");
-
-    setState(() {
-      _mapPadding = EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5);
-      // selectedStop = stop;
-    });
-    // await _updateVisibleMarkers();
 
     const zoom = 19.0;
     final screenHeight = MediaQuery.of(context).size.height;
     final sheetHeightFraction = 0.5;
     final metersPerPixel = 156543.03392 * cos(stop.lat * pi / 180) / pow(2, zoom);
     final latOffset = ((screenHeight * sheetHeightFraction / 2) * metersPerPixel) / 111320;
+
+    if (widget.pickerMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat - latOffset, stop.lng), zoom));
+      });
+      setState(() {
+        _selectedPickerStop = stop;
+        _mapPadding = EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5); // 0.4
+      });
+      showModalBottomSheet(
+          context: _nestedNavKey.currentContext!,
+          barrierColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (context) => StopRoutesSheet(stop: stop, pickerMode: true)
+      ).whenComplete(() {setState(() => _mapPadding = EdgeInsets.zero); _selectedPickerStop = null;});
+      return;
+    }
+
+    setState(() {
+      _mapPadding = EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.5);
+      // selectedStop = stop;
+    });
+    // await _updateVisibleMarkers();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(stop.lat - latOffset, stop.lng), zoom));
@@ -149,18 +165,27 @@ class _MapScreenState extends State<MapScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator(),),);
     }
     return AppShell(
-      title: "Map",
-      body: GoogleMap(
-        padding: _mapPadding, // not working for some reason
-        initialCameraPosition: const CameraPosition(target: LatLng(22.3193, 114.1694), zoom: 12),
-        onMapCreated: (controller) {
-          _mapController = controller;
-          _updateVisibleMarkers();
-        },
+      title: widget.pickerMode ? "Choose a stop" : "Map",
+      actions: widget.pickerMode ? [
+        IconButton(icon: _selectedPickerStop == null ? const Icon(Icons.arrow_back) : const Icon(Icons.check), onPressed: () {
+          final mapRoute = ModalRoute.of(context);
+          if (mapRoute != null && !mapRoute.isCurrent) { // pop stop_route_sheet first if still present
+            Navigator.of(context).pop();
+          }
+          Navigator.pop(context, _selectedPickerStop);
+        },),
+      ] : null,
+      body: Navigator(key: _nestedNavKey, onGenerateRoute: (settings) => MaterialPageRoute(builder: (nestedContext) => GoogleMap(
+          padding: _mapPadding, // not working for some reason
+          initialCameraPosition: const CameraPosition(target: LatLng(22.3193, 114.1694), zoom: 12),
+          onMapCreated: (controller) {
+            _mapController = controller;
+            _updateVisibleMarkers();
+          },
           onCameraIdle: _updateVisibleMarkers,
-        myLocationEnabled: true, // enables phone location services
-        markers: _visibleMarkers
-      ),
+          myLocationEnabled: true, // enables phone location services
+          markers: _visibleMarkers
+      ),),)
     );
   }
 }

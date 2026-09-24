@@ -473,6 +473,18 @@ class GtfsDatabase {
     return rows.map((r) => r["operator_stop_id"] as String).toList();
   }
 
+  Future<GtfsStop?> getGtfsStopById(String stopId) async {
+    final rows = await (await database).query("gtfs_stops", where: "stop_id = ?", whereArgs: [stopId]);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    return GtfsStop(
+        id: row["stop_id"] as String,
+        name: GtfsStop.cleanStopName(row["stop_name"] as String),
+        lat: row["stop_lat"] as double,
+        lng: row["stop_lon"] as double
+    );
+  }
+
   Future<List<String>> getRouteNumbersForOperatorStop(String operatorStopId) async {
     final rows = await (await database).rawQuery('''
     SELECT r.route_number

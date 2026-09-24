@@ -26,11 +26,11 @@ class AppDrawer extends StatelessWidget { // stateless bc the menu entrys are se
             },),
             ListTile(leading: const Icon(Icons.download), title: const Text("Reload Data"), onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (cocntext) => const LoadingScreen(operation: initializeTransitData,forceRefresh: true)));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const LoadingScreen(operation: initializeTransitData,forceRefresh: true)));
             },),
             ListTile(leading: const Icon(Icons.refresh), title: const Text("Refresh Data"), onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (cocntext) => const LoadingScreen(operation: refreshStaleProviders,)));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const LoadingScreen(operation: refreshStaleProviders,)));
             },),
             ListTile(leading: const Icon(Icons.settings), title: const Text("Settings"), onTap: () => Navigator.pop(context),),
           ],
