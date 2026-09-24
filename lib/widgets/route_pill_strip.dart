@@ -73,7 +73,9 @@ class _MiniRoutePill extends StatelessWidget {
     return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(color: colours.iconColour, borderRadius: BorderRadius.circular(12)),
-        child: Text(route.routeNumber, style: TextStyle(color: colours.textColour, fontSize: 11, fontWeight: FontWeight.bold,),)
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(route.routeNumber, style: TextStyle(color: colours.textColour, fontSize: 11, fontWeight: FontWeight.bold,),)
+        ],)
     );
   }
 }

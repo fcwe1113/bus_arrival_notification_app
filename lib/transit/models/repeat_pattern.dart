@@ -38,4 +38,53 @@ class RepeatPattern {
     weekdays: (json["weekdays"] as List<dynamic>?)?.map((e) => e as int).toList(),
     dayOfMonth: (json["dayOfMonth"] as List<dynamic>?)?.map((e) => e as int).toList(),
   );
+
+  String formatWeekdays(Set<int> days) {
+    if (days.isEmpty) return "Never"; // should never happen
+    if (days.length == 7) return "Everyday"; // should never happen
+    if (days.length == 5 && days.containsAll({1, 2, 3, 4, 5})) return "Weekdays";
+    if (days.length == 2 && days.containsAll({6, 7})) return "Weekends";
+
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    final sortedDays = days.toList()..sort();
+    return sortedDays.map((day) => dayNames[day - 1]).join(", ");
+  }
+
+  String getOrdinalDay(int day) {
+    if (day >= 11 && day <= 13) {
+      return "${day}th";
+    }
+    switch (day) {
+      case 1:
+        return "${day}st";
+      case 2:
+        return "${day}nd";
+      case 3:
+        return "${day}rd";
+      default:
+        return "${day}th";
+    }
+  }
+
+  String formatMonthlyDays(Set<int> days) {
+    if (days.isEmpty) return "Never"; //should never happen
+    final sortedDays = days.toList()..sort();
+    final formattedDays = sortedDays.map((d) => getOrdinalDay(d)).join(", ");
+
+    if (sortedDays.length == 1) return "Monthly on the ${formattedDays}";
+    return "Monthly on ${formattedDays}";
+  }
+
+  String? toInfoString() {
+    switch (frequency) {
+      case RepeatFrequency.none:
+        return null;
+      case RepeatFrequency.daily:
+        return "Daily";
+      case RepeatFrequency.weekly:
+        return formatWeekdays({...?weekdays});
+      case RepeatFrequency.monthly:
+        return formatMonthlyDays({...?dayOfMonth});
+    }
+  }
 }

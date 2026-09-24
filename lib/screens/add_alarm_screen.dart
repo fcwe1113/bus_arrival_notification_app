@@ -161,10 +161,18 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
       if (proceed != true) return;
     }
 
-    final splitDays = days.split(",");
-    if (splitDays.contains("29") || splitDays.contains("30") || splitDays.contains("31")) {
+    final splitDays = days.split(",").map<int>((d) => int.tryParse(d)!).toSet();
+    if (splitDays.containsAll({29, 30, 31})) {
       final proceed = await _showWarning("You entered days not present in every month, the alarm will not trigger on months without those days.");
       if (proceed != true) return;
+    }
+
+    // conversions, if user picked all weekdays convert to daily, etc
+
+    if (_repeatPattern.frequency == RepeatFrequency.weekly) {
+      if (_selectedWeekdays.containsAll({1, 2, 3, 4, 5, 6, 7})) _repeatPattern = RepeatPattern(frequency: RepeatFrequency.daily);
+    } else if (_repeatPattern.frequency == RepeatFrequency.monthly) {
+      if (splitDays.length == 31 && splitDays.first == 1 && splitDays.last == 31) _repeatPattern = RepeatPattern(frequency: RepeatFrequency.daily);
     }
 
     // return;
@@ -179,7 +187,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
         repeat: RepeatPattern(
             frequency: _repeatPattern.frequency,
             weekdays: _repeatPattern.frequency == RepeatFrequency.weekly ? _selectedWeekdays.toList() : null,
-            dayOfMonth: _repeatPattern.frequency == RepeatFrequency.monthly ? splitDays.map<int>((d) => int.tryParse(d)!).toList() : null
+            dayOfMonth: _repeatPattern.frequency == RepeatFrequency.monthly ? splitDays.toList() : null
         ),
         liveOnly: _liveOnly,
         enabled: true
