@@ -1,4 +1,5 @@
 import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
+import 'package:bus_arrival_notification_app/screens/map_screen.dart';
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/repeat_pattern.dart';
@@ -84,9 +85,15 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
     });
   }
 
-  void _openMapPicker() {
-    // todo hook up map
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("to be implemented lol")));
+  void _openMapPicker() async {
+    final picked = await Navigator.push<GtfsStop>(context, MaterialPageRoute(builder: (context) => const MapScreen(pickerMode: true,)));
+    if (picked == null) return; // user did not select stop
+    final routeList = Set<BusRoute>.from(await GtfsDatabase.forLocale("hk").getRoutesForGtfsStop(picked.id));
+    setState(() {
+      _selectedStop = picked;
+      _availableRoutes = routeList;
+      _selectedRoutes = {};
+    });
   }
 
   void _compileAndSave() { // todo hook up to actual alarm save function
@@ -159,7 +166,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               setState(() {
                 _selectedStop = selection;
                 _availableRoutes = _routeList;
-                print("state set");
+                _selectedRoutes = {};
               });
             },
             fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
@@ -176,7 +183,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           )),
             const SizedBox(width: 8),
             IconButton.filledTonal(
-              onPressed: () => {},
+              onPressed: _openMapPicker,
               icon: const Icon(Icons.location_searching),
               tooltip: "Choose on map",
             )],),
@@ -212,14 +219,14 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // how early to ring
           Row(children: [
             const Text("Minutes away to ring: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()),))
+            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder(), hintText: "e.g. \"8\" or \"15, 12\""),))
           ],),
           const SizedBox(height: 24,),
 
           // max ring attempts
           Row(children: [
             const Text("Max ring attempts: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()),))
+            Expanded(child: TextFormField(decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()), initialValue: "10",))
           ],),
           const SizedBox(height: 24,),
 

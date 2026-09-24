@@ -10,11 +10,39 @@ import '../transit/models/gtfs_stop.dart';
 
 class StopRoutesSheet extends StatelessWidget{
   final GtfsStop stop;
+  final bool pickerMode;
 
-  const StopRoutesSheet({super.key, required this.stop});
+  const StopRoutesSheet({super.key, required this.stop, this.pickerMode = false});
 
   @override
   Widget build(BuildContext context) {
+    if (pickerMode) {
+      return _buildPickerContent(context);
+    } else {
+      return _buildFullContent(context);
+    }
+  }
+
+  Widget _buildPickerContent(BuildContext context) {
+    final db = GtfsDatabase.forLocale("hk"); // todo remove locale hardcode
+    return SafeArea(child: Container(
+      height: MediaQuery.of(context).size.height * 0.5,
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(GtfsStop.cleanStopName(stop.name), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+        const SizedBox(height: 12,),
+        Expanded(child: FutureBuilder<List<BusRoute>>(future: db.getRoutesForGtfsStop(stop.id), builder: (context, snapshot) {
+          final routes = BusRoute.dedupeByRouteNumber(snapshot.data ?? []);
+          if (routes.isEmpty) return const Text("No routes found for this stop");
+          return Scrollbar(child: ListView(children: routes.map((r) => ListTile(
+            leading: _RoutePill(route: r),
+            title: Text(r.destinationText["en"] ?? ""),)).toList(),));
+        },))
+      ],),
+    ));
+  }
+
+  Widget _buildFullContent(BuildContext context) {
     final db = GtfsDatabase.forLocale("hk"); // todo remove hardcode
     return SafeArea(child: Container(
       height: MediaQuery.of(context).size.height * 0.5,
