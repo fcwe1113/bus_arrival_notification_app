@@ -27,7 +27,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   bool _isLoadingStops = true;
   List<GtfsStop> _loadedStops = [];
   GtfsStop? _selectedStop;
-  final TextEditingController _searchController = TextEditingController();
+  TextEditingController? _searchController;
 
   Set<BusRoute> _selectedRoutes = {};
   Set<BusRoute> _availableRoutes = {};
@@ -42,6 +42,9 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   bool _liveOnly = false;
 
+  final _thresholdKey = GlobalKey<FormFieldState<String>>();
+  final _attemptsKey = GlobalKey<FormFieldState<String>>();
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +54,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    // _searchController.dispose();
     _monthlyDayController.dispose();
     super.dispose();
   }
@@ -66,7 +69,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   void _onLeftTimeChanged(TimeOfDay newLeft) {
     // if (newLeft.isAfter(_rightTime)) newLeft.subtract(Duration(days: 1));
-    final diff = _toMinutes(_rightTime) - _toMinutes(_leftTime);
+    final diff = _calculateDurationInMinutes(_leftTime, _rightTime);
     setState(() {
       _rightTime = _fromMinutes(_toMinutes(newLeft) + diff);
       _leftTime = newLeft;
@@ -75,7 +78,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   void _onRightTimeChanged(TimeOfDay newRight) {
     // if (newRight.isBefore(_leftTime)) newRight = newRight.add(Duration(days: 1)); // add one day if newRight is "before" the left time
-    final diff = (_toMinutes(newRight) - _toMinutes(_leftTime)) < 0 ? 1440 + (_toMinutes(newRight) - _toMinutes(_leftTime)) : (_toMinutes(newRight) - _toMinutes(_leftTime));
+    final diff = _calculateDurationInMinutes(_leftTime, newRight);
     _onSliderChanged((diff > 60 ? 60 : diff) + 0.0);
     setState(() {
       _rightTime = newRight;
@@ -97,8 +100,8 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
       _selectedStop = picked;
       _availableRoutes = routeList;
       _selectedRoutes = {};
-      _searchController.clear();
-      _searchController.text = GtfsStop.cleanStopName(_selectedStop!.name);
+      // _searchController?.clear();
+      _searchController?.text = GtfsStop.cleanStopName(_selectedStop!.name);
     });
   }
 
@@ -109,6 +112,11 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   }
 
   void _compileAndSave() { // todo hook up to actual alarm save function
+
+    if (!_thresholdKey.currentState!.validate() || !_attemptsKey.currentState!.validate() || _selectedStop == null || _selectedRoutes.isEmpty){
+      // todo yell at users to complete form correctly
+      return;
+    }
 
     final newAlarm = BusAlarm(
         id: "000001", // todo define later
@@ -134,11 +142,22 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               const Text("Alarm Time Window", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12,),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+
+                // left time button
                 OutlinedButton.icon(onPressed: () async {
                   final picked = await showTimePicker(context: context, initialTime: _leftTime);
                   if (picked != null) _onLeftTimeChanged(picked);
                 }, label: Text("${_leftTime.hour.toString().padLeft(2, "0")}:${_leftTime.minute.toString().padLeft(2, "0")}"), icon: const Icon(Icons.access_time),),
-                const Icon(Icons.arrow_forward, size: 20,),
+
+                // middle arrow / time diff
+                Column(mainAxisSize: MainAxisSize.min, children: [Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                  child: Text("${_calculateDurationInMinutes(_leftTime, _rightTime)} min", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),),
+                ), const SizedBox(height: 2,), const Icon(Icons.arrow_forward, size: 20,)
+                ],),
+
+                // right time button
                 OutlinedButton.icon(onPressed: () async {
                   final picked = await showTimePicker(context: context, initialTime: _rightTime);
                   if (picked != null) _onRightTimeChanged(picked);
@@ -182,7 +201,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               });
             },
             fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-              controller = _searchController;
+              _searchController = controller;
               return TextField(
                 controller: controller,
                 focusNode: focusNode,
@@ -234,10 +253,35 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
             const Text("Minutes away to ring: ", style: TextStyle(fontWeight: FontWeight.bold),),
             Expanded(child: TextFormField(decoration: const InputDecoration(
                 isDense: true, border: UnderlineInputBorder(),
-                hintText: "e.g. \"8\" or \"15, 12\""
+                hintText: "e.g. \"8\" or \"15,12\""
             ), onChanged: (value) {setState(() {
               _ringThreshhold = value;
-            });}, initialValue: _ringThreshhold,))
+            });},
+              initialValue: _ringThreshhold,
+              keyboardType: TextInputType.text,
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r"[0-9,]"))],
+              key: _thresholdKey,
+              validator: (val) {
+                if (val == null || val == "") {
+                  return "Required";
+                }
+
+                final currentWindow = _calculateDurationInMinutes(_leftTime, _rightTime);
+                final items = val.split(",");
+
+                for (final item in items) {
+                  final minutes = int.tryParse(item);
+                  if (minutes == null) {
+                    return "Do not chain commas";
+                  }
+                  if (minutes >= currentWindow) {
+                    return "Please enter a number smaller than alarm active window";
+                  }
+                }
+
+                return null;
+              },
+            ))
           ],),
           const SizedBox(height: 24,),
 
@@ -249,7 +293,13 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
                 border: UnderlineInputBorder()
             ), onChanged: (value) {setState(() {
               _maxRingAttempts = value;
-            });}, initialValue: _maxRingAttempts,))
+            });},
+              initialValue: _maxRingAttempts,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              key: _attemptsKey,
+              validator: (val) => val == null || val == "" ? "Required" : int.parse(val) > 15 ? "Cannot exceed 15 times" : null,
+            ))
           ],),
           const SizedBox(height: 24,),
 
@@ -299,8 +349,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               Expanded(child: SizedBox(child: TextField(
                 controller: _monthlyDayController,
                 keyboardType: TextInputType.text,
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r"[0-9, ]"))],
-                // textAlign: TextAlign.center,
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r"[0-9,]"))],
                 decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), hintText: "e.g. \"11,25\""),
               ),))
             ],)
@@ -339,5 +388,13 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
   TimeOfDay _fromMinutes(int m) => TimeOfDay(hour: (m ~/ 60) % 24, minute: m % 60);
+
+  int _calculateDurationInMinutes(TimeOfDay start, TimeOfDay end) {
+    int duration = _toMinutes(end) - _toMinutes(start);
+    if (duration < 0) {
+      duration += 24 * 60;
+    }
+    return duration;
+  }
 
 }

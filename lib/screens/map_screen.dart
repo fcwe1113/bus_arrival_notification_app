@@ -102,7 +102,7 @@ class _MapScreenState extends State<MapScreen> {
           barrierColor: Colors.transparent,
           isScrollControlled: true,
           builder: (context) => StopRoutesSheet(stop: stop, pickerMode: true)
-      ).whenComplete(() {setState(() => _mapPadding = EdgeInsets.zero);});
+      ).whenComplete(() {setState(() => _mapPadding = EdgeInsets.zero); _selectedPickerStop = null;});
       return;
     }
 
@@ -166,10 +166,10 @@ class _MapScreenState extends State<MapScreen> {
     }
     return AppShell(
       title: widget.pickerMode ? "Choose a stop" : "Map",
-      actions: widget.pickerMode && _selectedPickerStop != null ? [
-        IconButton(icon: const Icon(Icons.check), onPressed: () {
+      actions: widget.pickerMode ? [
+        IconButton(icon: _selectedPickerStop == null ? const Icon(Icons.arrow_back) : const Icon(Icons.check), onPressed: () {
           final mapRoute = ModalRoute.of(context);
-          if (mapRoute != null && !mapRoute.isCurrent) {
+          if (mapRoute != null && !mapRoute.isCurrent) { // pop stop_route_sheet first if still present
             Navigator.of(context).pop();
           }
           Navigator.pop(context, _selectedPickerStop);
