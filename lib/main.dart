@@ -1,14 +1,31 @@
+import 'dart:convert';
+
 import 'package:bus_arrival_notification_app/screens/add_alarm_screen.dart';
 import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
 import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
 import 'package:bus_arrival_notification_app/screens/setup_screen.dart';
 import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 Future<void> main() async { // dart entry point
 
   WidgetsFlutterBinding.ensureInitialized();
+  final String jsonString = await rootBundle.loadString("config/secrets.json");
+  final Map<String, dynamic> secrets = jsonDecode(jsonString);
+  final String apiKey = secrets["MAPS_API_KEY"];
+
+  if (defaultTargetPlatform == TargetPlatform.iOS && apiKey.isNotEmpty) {
+    const channel = MethodChannel("com.fcwe1113.future_new_app_name/google_maps");
+    try {
+      await channel.invokeMethod("setApiKey", {"apiKey": apiKey});
+    } on PlatformException catch (e) {
+      debugPrint("Failed to pass Google Maps API key to iOS: ${e.message}");
+    }
+  }
+
   final selectionService = LocaleSelectionService();
   final setupDone = await selectionService.hasCompletedSetup(); // check if user did setup before
 
