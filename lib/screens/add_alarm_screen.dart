@@ -36,7 +36,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   final Set<int> _selectedWeekdays = {1, 2, 3, 4, 5}; // 1 = mon ... 7 = sun
   late TextEditingController _monthlyDayController;
 
-  String _ringThreshhold = "";
+  String _ringThreshold = "";
   String _maxRingAttempts = "10";
   String _customRingMessage = "Wake Up!";
 
@@ -44,6 +44,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   final _thresholdKey = GlobalKey<FormFieldState<String>>();
   final _attemptsKey = GlobalKey<FormFieldState<String>>();
+  final _messageKey = GlobalKey<FormFieldState<String>>();
 
   @override
   void initState() {
@@ -105,36 +106,98 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
     });
   }
 
-  void _alarmValidityChecker() { // todo write alarm validity check
-    print("${_leftTime.hour}:${_leftTime.minute} - ${_rightTime.hour}:${_rightTime.minute}\n${_selectedStop!.id}\n${_selectedRoutes.map((r) => r.routeNumber).toList()}\n${_ringThreshhold}\n${_maxRingAttempts}\n${_liveOnly}\n${_repeatPattern.frequency}");
+  Future<void> _compileAndSave() async { // todo hook up to actual alarm save function
 
+    // errors
+    bool error = false;
+    String errorMsg = "";
+    final days = _monthlyDayController.text;
+    if (!_thresholdKey.currentState!.validate() || !_attemptsKey.currentState!.validate() || !_messageKey.currentState!.validate()){
+      error = true;
+    }
+    if (_selectedStop == null) {
+      error = true;
+      errorMsg += "No stop selected\n";
+    } else if (_selectedRoutes.isEmpty) {
+      error = true;
+      errorMsg += "No routes selected\n";
+    }
+    if (_repeatPattern.frequency == RepeatFrequency.weekly) {
+      if (_selectedWeekdays.isEmpty) {
+        error = true;
+        errorMsg += "No weekdays selected\n";
+      }
+    } else if (_repeatPattern.frequency == RepeatFrequency.monthly){
+      if (days == "") {
+        error = true;
+        errorMsg += "No days in month selected\n";
+      } else {
+        final invalidDays = days.split(",").where((d) => d == "" || (int.tryParse(d)! < 1 || int.tryParse(d)! > 31));
+        if (invalidDays.isNotEmpty) {
+          error = true;
+          errorMsg += "Some days in month are invalid\n";
+        }
+      }
+    }
 
-  }
-
-  void _compileAndSave() { // todo hook up to actual alarm save function
-
-    if (!_thresholdKey.currentState!.validate() || !_attemptsKey.currentState!.validate() || _selectedStop == null || _selectedRoutes.isEmpty){
-      // todo yell at users to complete form correctly
+    if (error) {
+      if (errorMsg != "") {
+        showDialog(context: context, builder: (context) => AlertDialog(
+          title: const Text("Error"),
+          content: Text(errorMsg),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
+        ));
+      }
       return;
     }
 
+    // warnings, allow user to return but can proceed if desired
+
+    if (_calculateDurationInMinutes(_leftTime, _rightTime) > 60) {
+      final proceed = await _showWarning("Setting an alarm window of over 1 hour is not recommended, make sure you know what you are doing before continuing.");
+      if (proceed != true) return;
+    }
+
+    final splitDays = days.split(",");
+    if (splitDays.contains("29") || splitDays.contains("30") || splitDays.contains("31")) {
+      final proceed = await _showWarning("You entered days not present in every month, the alarm will not trigger on months without those days.");
+      if (proceed != true) return;
+    }
+
+    // return;
+
     final newAlarm = BusAlarm(
-        id: "000001", // todo define later
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         gtfsStopId: _selectedStop!.id,
         routeNumbers: _selectedRoutes.map((r) => r.routeNumber).toList(),
         windowStart: _leftTime,
         windowEnd: _rightTime,
-        thresholdStates: [ThresholdState(minutesBeforeArrival: 5)],
-        repeat: _repeatPattern,
+        thresholdStates: _ringThreshold.split(",").map<ThresholdState>((t) => ThresholdState(minutesBeforeArrival: int.tryParse(t)!, ringCount: int.tryParse(_maxRingAttempts)!)).toList(),
+        repeat: RepeatPattern(
+            frequency: _repeatPattern.frequency,
+            weekdays: _repeatPattern.frequency == RepeatFrequency.weekly ? _selectedWeekdays.toList() : null,
+            dayOfMonth: _repeatPattern.frequency == RepeatFrequency.monthly ? splitDays.map<int>((d) => int.tryParse(d)!).toList() : null
+        ),
         liveOnly: _liveOnly,
         enabled: true
     );
     Navigator.pop(context, newAlarm);
   }
 
+  Future<bool?> _showWarning(String text) async {
+    return showDialog(context: context, builder: (context) => AlertDialog(
+      title: const Text("Warning"),
+      content: Text(text),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Go back"),),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: Text("Continue"))
+      ],
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AppShell(title: "Add a new alarm", actions: [IconButton(onPressed: _alarmValidityChecker, icon: const Icon(Icons.check))],
+    return AppShell(title: "Add a new alarm", actions: [IconButton(onPressed: _compileAndSave, icon: const Icon(Icons.check))],
         body: ListView(padding: const EdgeInsets.all(16), children: [
           // time range selector slider
           Card(child: Padding(padding: const EdgeInsetsGeometry.all(16), child:
@@ -255,9 +318,9 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
                 isDense: true, border: UnderlineInputBorder(),
                 hintText: "e.g. \"8\" or \"15,12\""
             ), onChanged: (value) {setState(() {
-              _ringThreshhold = value;
+              _ringThreshold = value;
             });},
-              initialValue: _ringThreshhold,
+              initialValue: _ringThreshold,
               keyboardType: TextInputType.text,
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r"[0-9,]"))],
               key: _thresholdKey,
@@ -275,7 +338,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
                     return "Do not chain commas";
                   }
                   if (minutes >= currentWindow) {
-                    return "Please enter a number smaller than alarm active window";
+                    return "number(s) exceed alarm active window";
                   }
                 }
 
@@ -380,7 +443,10 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
               setState(() {
                 _customRingMessage = value;
               });
-            }, initialValue: _customRingMessage,))
+            }, initialValue: _customRingMessage,
+              key: _messageKey,
+              validator: (val) => val == null || val == "" ? "Required" : null,
+            ))
           ],),
         ],)
     );
