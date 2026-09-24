@@ -10,8 +10,10 @@ import '../transit/models/gtfs_stop.dart';
 class AlarmCard extends StatelessWidget { // note it takes the alarm object as required input
   final BusAlarm alarm;
   final ValueChanged<bool> onToggle; // callback for a value changing
+  final bool _isEditing;
+  final VoidCallback? onDelete;
 
-  const AlarmCard({super.key, required this.alarm, required this.onToggle});
+  const AlarmCard({super.key, required this.alarm, required this.onToggle, this._isEditing = false, this.onDelete});
 
   bool get _withinActiveWindow {
     final now = TimeOfDay.now();
@@ -39,7 +41,13 @@ class AlarmCard extends StatelessWidget { // note it takes the alarm object as r
     return Card( // groups up everything within visually
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), child: Padding(
         padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [Expanded(
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [if (_isEditing) ...[IconButton(
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(),
+            icon: Icon(Icons.remove_circle, color: Colors.red, size: 26,),
+            onPressed: onDelete,
+          ), const SizedBox(width: 12,)],
+            Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text("${_formatTime(alarm.windowStart)} - ${_formatTime(alarm.windowEnd)}", style: TextStyle(
                   fontSize: 22,

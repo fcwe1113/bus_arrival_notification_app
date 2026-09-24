@@ -19,6 +19,7 @@ class AlarmListScreen extends StatefulWidget {
 /// State object within the alarm list screen
 class _AlarmListScreenState extends State<AlarmListScreen> {
   List<BusAlarm> _alarms = [];
+  bool _isEditing = false;
 
   @override
   void initState() {
@@ -40,22 +41,46 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     });
   }
 
+  void _deleteAlarm(int index) async {
+    await AlarmStorageService().deleteAlarm(_alarms[index].id);
+    setState(() {
+      _alarms.remove(_alarms[index]);
+    });
+  }
+
+  Future<void> _navigateToAddAlarm() async {
+    await Navigator.pushNamed(context, "/add-alarm");
+    await _loadAlarms();
+  }
+
   /// Draws the screen
   @override
   Widget build(BuildContext context) {
     return AppShell(
         title: "Alarm List",
-        actions: [IconButton(onPressed: () {Navigator.pushNamed(context, "/add-alarm");}, icon: const Icon(Icons.add))],
-        body: ListView.builder(
-            itemCount: _alarms.length,
-            itemBuilder: (context, index) {
-              final alarm = _alarms[index];
-              return AlarmCard(
-                alarm: alarm,
-                onToggle: (_) => _toggleAlarm(index),
-              );
-            }
-        )
+        actions: [ if (_isEditing) IconButton(
+          onPressed: _navigateToAddAlarm,
+          icon: const Icon(Icons.add)), TextButton(onPressed: () {
+            setState(() {
+              _isEditing = !_isEditing;
+            });
+          }, child: Text(
+            _isEditing ? "Done" : "Edit",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ))],
+          body: _alarms.isEmpty ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text("Alarm List empty", style: TextStyle(color: Colors.grey.shade600, fontSize: 32),),
+            const SizedBox(height: 12,),
+            ElevatedButton.icon(onPressed: _navigateToAddAlarm, icon: Icon(Icons.add), label: const Text("Add Alarm"),)
+          ],),) : ListView.builder(itemCount: _alarms.length, itemBuilder: (context, index) {
+            final alarm = _alarms[index];
+            return AlarmCard(
+              alarm: alarm,
+              isEditing: _isEditing,
+              onToggle: (_) => _toggleAlarm(index),
+              onDelete: () => _deleteAlarm(index),
+            );
+          })
     );
   }
 }
