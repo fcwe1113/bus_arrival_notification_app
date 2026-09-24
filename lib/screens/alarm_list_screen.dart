@@ -26,13 +26,11 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     _loadAlarms();
   }
 
-  Future<void> _loadAlarms() async { // todo make it read the alarm list once it exist
-    // idk read from the alarm list json or something
-    // for now we make a dummy alarm for testing purposes
-    // throw UnimplementedError();
-
-    //_alarms = [BusAlarm(id: "00001", operatorRouteId: "41", gtfsStopId: "1234", enabled: false, nextArrival: 12)];
-    _alarms = await AlarmStorageService().loadAlarms();
+  Future<void> _loadAlarms() async {
+    final alarmList = await AlarmStorageService().loadAlarms();
+    setState(() {
+      _alarms = alarmList;
+    });
   }
 
   /// Event trigger for switching alarm enabled bool

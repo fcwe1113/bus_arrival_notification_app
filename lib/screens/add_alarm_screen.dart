@@ -1,5 +1,6 @@
 import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
 import 'package:bus_arrival_notification_app/screens/map_screen.dart';
+import 'package:bus_arrival_notification_app/services/alarm_storage_service.dart';
 import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
 import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
 import 'package:bus_arrival_notification_app/transit/models/repeat_pattern.dart';
@@ -45,6 +46,8 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   final _thresholdKey = GlobalKey<FormFieldState<String>>();
   final _attemptsKey = GlobalKey<FormFieldState<String>>();
   final _messageKey = GlobalKey<FormFieldState<String>>();
+
+  final alarmStorage = AlarmStorageService();
 
   @override
   void initState() {
@@ -181,7 +184,8 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
         liveOnly: _liveOnly,
         enabled: true
     );
-    Navigator.pop(context, newAlarm);
+    await alarmStorage.addAlarm(newAlarm);
+    Navigator.pop(context);
   }
 
   Future<bool?> _showWarning(String text) async {
