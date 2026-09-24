@@ -10,14 +10,18 @@ import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class AddAlarmScreen extends StatefulWidget{
-  const AddAlarmScreen({super.key});
+class AddAlarmScreen extends StatefulWidget {
+  final BusAlarm? alarmToEdit;
+
+  const AddAlarmScreen({super.key, this.alarmToEdit});
 
   @override
   State<AddAlarmScreen> createState() => _AddAlarmScreenState();
 }
 
 class _AddAlarmScreenState extends State<AddAlarmScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   TimeOfDay _leftTime = TimeOfDay.now();
   TimeOfDay _rightTime = TimeOfDay.now().replacing(
       minute: (TimeOfDay.now().minute + 15) % 60,
@@ -36,16 +40,11 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   RepeatPattern _repeatPattern = RepeatPattern.none;
   final Set<int> _selectedWeekdays = {1, 2, 3, 4, 5}; // 1 = mon ... 7 = sun
   late TextEditingController _monthlyDayController;
-
-  String _ringThreshold = "";
-  String _maxRingAttempts = "10";
-  String _customRingMessage = "Wake Up!";
+  late TextEditingController _thresholdController;
+  late TextEditingController _attemptsController;
+  late TextEditingController _messageController;
 
   bool _liveOnly = false;
-
-  final _thresholdKey = GlobalKey<FormFieldState<String>>();
-  final _attemptsKey = GlobalKey<FormFieldState<String>>();
-  final _messageKey = GlobalKey<FormFieldState<String>>();
 
   final alarmStorage = AlarmStorageService();
 
@@ -53,13 +52,49 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   void initState() {
     super.initState();
     _monthlyDayController = TextEditingController(text: DateTime.now().day.toString());
-    _loadBusStops();
+    _thresholdController = TextEditingController();
+    _messageController = TextEditingController(text: "Wake Up!");
+    _attemptsController = TextEditingController(text: "10");
+    if (widget.alarmToEdit != null) {
+      _prefillExistingAlarmData(widget.alarmToEdit!);
+    } else {
+      _loadBusStops();
+    }
+  }
+
+  Future<void> _prefillExistingAlarmData(BusAlarm alarm) async {
+    _thresholdController.text = alarm.thresholdStates.map((t) => t.minutesBeforeArrival.toString()).join(",");
+    _attemptsController.text = alarm.thresholdStates.first.ringCount.toString();
+    _messageController.text = alarm.message;
+
+    _leftTime = alarm.windowStart;
+    _rightTime = alarm.windowEnd;
+    _repeatPattern = alarm.repeat;
+    _liveOnly = alarm.liveOnly;
+    _sliderMinutes = _calculateDurationInMinutes(_leftTime, _rightTime);
+    if (_sliderMinutes > 60) _sliderMinutes = 60;
+    await _loadBusStops();
+    final db = GtfsDatabase.forLocale("hk"); // todo remove locale hardcode
+    final stop = await db.getGtfsStopById(alarm.gtfsStopId);
+    if (stop != null) {
+      final routes = Set<BusRoute>.from(await db.getRoutesForGtfsStop(alarm.gtfsStopId));
+      final selectedRoutes = routes.where((r) => alarm.routeNumbers.contains(r.routeNumber)).toSet();
+
+      setState(() {
+        _selectedStop = stop;
+        _availableRoutes = routes;
+        _selectedRoutes = selectedRoutes;
+        _searchController?.text = GtfsStop.cleanStopName(stop.name);
+      });
+    }
   }
 
   @override
   void dispose() {
-    // _searchController.dispose();
     _monthlyDayController.dispose();
+    _messageController.dispose();
+    _attemptsController.dispose();
+    _thresholdController.dispose();
     super.dispose();
   }
 
@@ -83,7 +118,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   void _onRightTimeChanged(TimeOfDay newRight) {
     // if (newRight.isBefore(_leftTime)) newRight = newRight.add(Duration(days: 1)); // add one day if newRight is "before" the left time
     final diff = _calculateDurationInMinutes(_leftTime, newRight);
-    _onSliderChanged((diff > 60 ? 60 : diff) + 0.0);
+    _onSliderChanged((diff > 60 ? 60 : diff).toDouble());
     setState(() {
       _rightTime = newRight;
     });
@@ -92,30 +127,28 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
   void _onSliderChanged(double newMinutes) {
     setState(() {
       _sliderMinutes = newMinutes.round();
-      _rightTime = _fromMinutes(_toMinutes(_leftTime) + _sliderMinutes ~/ 1);
+      _rightTime = _fromMinutes(_toMinutes(_leftTime) + _sliderMinutes);
     });
   }
 
   void _openMapPicker() async {
     final picked = await Navigator.push<GtfsStop>(context, MaterialPageRoute(builder: (context) => const MapScreen(pickerMode: true,)));
     if (picked == null) return; // user did not select stop
-    final routeList = Set<BusRoute>.from(await GtfsDatabase.forLocale("hk").getRoutesForGtfsStop(picked.id));
+    final routeList = Set<BusRoute>.from(await GtfsDatabase.forLocale("hk").getRoutesForGtfsStop(picked.id)); // todo remove locale hardcode
     setState(() {
       _selectedStop = picked;
       _availableRoutes = routeList;
       _selectedRoutes = {};
-      // _searchController?.clear();
       _searchController?.text = GtfsStop.cleanStopName(_selectedStop!.name);
     });
   }
 
-  Future<void> _compileAndSave() async { // todo hook up to actual alarm save function
+  Future<void> _compileAndSave() async {
 
     // errors
     bool error = false;
     String errorMsg = "";
-    final days = _monthlyDayController.text;
-    if (!_thresholdKey.currentState!.validate() || !_attemptsKey.currentState!.validate() || !_messageKey.currentState!.validate()){
+    if (!(_formKey.currentState?.validate() ?? false)) {
       error = true;
     }
     if (_selectedStop == null) {
@@ -125,18 +158,24 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
       error = true;
       errorMsg += "No routes selected\n";
     }
+
+    final days = _monthlyDayController.text;
+    final splitDays = days.split(",").map((d) => int.tryParse(d)!).whereType<int>().toSet();
     if (_repeatPattern.frequency == RepeatFrequency.weekly) {
       if (_selectedWeekdays.isEmpty) {
         error = true;
         errorMsg += "No weekdays selected\n";
       }
-    } else if (_repeatPattern.frequency == RepeatFrequency.monthly){
-      if (days == "") {
+    } else if (_repeatPattern.frequency == RepeatFrequency.monthly) {
+      if (days.trim().isEmpty) {
         error = true;
         errorMsg += "No days in month selected\n";
       } else {
-        final invalidDays = days.split(",").where((d) => d == "" || (int.tryParse(d)! < 1 || int.tryParse(d)! > 31));
-        if (invalidDays.isNotEmpty) {
+        final invalidDays = days.split(",").any((d) {
+          final parsed = int.tryParse(d.trim());
+          return parsed == null || parsed < 1 || parsed > 31;
+        });
+        if (invalidDays) {
           error = true;
           errorMsg += "Some days in month are invalid\n";
         }
@@ -154,19 +193,6 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
       return;
     }
 
-    // warnings, allow user to return but can proceed if desired
-
-    if (_calculateDurationInMinutes(_leftTime, _rightTime) > 60) {
-      final proceed = await _showWarning("Setting an alarm window of over 1 hour is not recommended, make sure you know what you are doing before continuing.");
-      if (proceed != true) return;
-    }
-
-    final splitDays = days.split(",").map<int>((d) => int.tryParse(d)!).toSet();
-    if (splitDays.containsAll({29, 30, 31})) {
-      final proceed = await _showWarning("You entered days not present in every month, the alarm will not trigger on months without those days.");
-      if (proceed != true) return;
-    }
-
     // conversions, if user picked all weekdays convert to daily, etc
 
     if (_repeatPattern.frequency == RepeatFrequency.weekly) {
@@ -175,24 +201,43 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
       if (splitDays.length == 31 && splitDays.first == 1 && splitDays.last == 31) _repeatPattern = RepeatPattern(frequency: RepeatFrequency.daily);
     }
 
-    // return;
+    // warnings, allow user to return but can proceed if desired
+
+    if (_calculateDurationInMinutes(_leftTime, _rightTime) > 60) {
+      final proceed = await _showWarning("Setting an alarm window of over 1 hour is not recommended, make sure you know what you are doing before continuing.");
+      if (proceed != true) return;
+    }
+
+    if (_repeatPattern.frequency == RepeatFrequency.monthly && splitDays.containsAll({29, 30, 31})) {
+      final proceed = await _showWarning("You entered days not present in every month, the alarm will not trigger on months without those days.");
+      if (proceed != true) return;
+    }
+
+    final alarmThresholds = _thresholdController.text.split(",").map((t) => int.tryParse(t.trim())).whereType<int>().map(
+            (m) => ThresholdState(minutesBeforeArrival: m, ringCount: int.tryParse(_attemptsController.text) ?? 10)
+    ).toList();
 
     final newAlarm = BusAlarm(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: widget.alarmToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         gtfsStopId: _selectedStop!.id,
         routeNumbers: _selectedRoutes.map((r) => r.routeNumber).toList(),
         windowStart: _leftTime,
         windowEnd: _rightTime,
-        thresholdStates: _ringThreshold.split(",").map<ThresholdState>((t) => ThresholdState(minutesBeforeArrival: int.tryParse(t)!, ringCount: int.tryParse(_maxRingAttempts)!)).toList(),
+        thresholdStates: alarmThresholds,
         repeat: RepeatPattern(
             frequency: _repeatPattern.frequency,
             weekdays: _repeatPattern.frequency == RepeatFrequency.weekly ? _selectedWeekdays.toList() : null,
             dayOfMonth: _repeatPattern.frequency == RepeatFrequency.monthly ? splitDays.toList() : null
         ),
         liveOnly: _liveOnly,
+        message: _messageController.text,
         enabled: true
     );
-    await alarmStorage.addAlarm(newAlarm);
+    if (widget.alarmToEdit != null) {
+      await alarmStorage.updateAlarm(newAlarm);
+    } else {
+      await alarmStorage.addAlarm(newAlarm);
+    }
     Navigator.pop(context);
   }
 
@@ -209,8 +254,9 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppShell(title: "Add a new alarm", actions: [IconButton(onPressed: _compileAndSave, icon: const Icon(Icons.check))],
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+    return AppShell(title: widget.alarmToEdit != null ? "Edit Alarm" : "Add a new alarm",
+        actions: [IconButton(onPressed: _compileAndSave, icon: const Icon(Icons.check))],
+        body: Form(key: _formKey, child: ListView(padding: const EdgeInsets.all(16), children: [
           // time range selector slider
           Card(child: Padding(padding: const EdgeInsetsGeometry.all(16), child:
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -299,7 +345,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // routes checkbox list
           if (_selectedStop != null) ...[
             Card(clipBehavior: Clip.antiAlias, child: ExpansionTile(
-              initiallyExpanded: true,
+              initiallyExpanded: false,
               title: Text(
                 "Routes serving ${GtfsStop.cleanStopName(_selectedStop!.name)}",
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -326,16 +372,12 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // how early to ring
           Row(children: [
             const Text("Minutes away to ring: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(
+            Expanded(child: TextFormField(controller: _thresholdController, decoration: const InputDecoration(
                 isDense: true, border: UnderlineInputBorder(),
                 hintText: "e.g. \"8\" or \"15,12\""
-            ), onChanged: (value) {setState(() {
-              _ringThreshold = value;
-            });},
-              initialValue: _ringThreshold,
+            ),
               keyboardType: TextInputType.text,
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r"[0-9,]"))],
-              key: _thresholdKey,
               validator: (val) {
                 if (val == null || val == "") {
                   return "Required";
@@ -363,16 +405,11 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // max ring attempts
           Row(children: [
             const Text("Max ring attempts: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(
+            Expanded(child: TextFormField(controller: _attemptsController, decoration: const InputDecoration(
                 isDense: true,
                 border: UnderlineInputBorder()
-            ), onChanged: (value) {setState(() {
-              _maxRingAttempts = value;
-            });},
-              initialValue: _maxRingAttempts,
-              keyboardType: TextInputType.number,
+            ), keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              key: _attemptsKey,
               validator: (val) => val == null || val == "" ? "Required" : int.parse(val) > 15 ? "Cannot exceed 15 times" : null,
             ))
           ],),
@@ -448,19 +485,13 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
           // max ring attempts
           Row(children: [
             const Text("Custom Message: ", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(child: TextFormField(decoration: const InputDecoration(
+            Expanded(child: TextFormField(controller: _messageController, decoration: const InputDecoration(
                 isDense: true,
                 border: UnderlineInputBorder()
-            ), onChanged: (value) {
-              setState(() {
-                _customRingMessage = value;
-              });
-            }, initialValue: _customRingMessage,
-              key: _messageKey,
-              validator: (val) => val == null || val == "" ? "Required" : null,
+            ), validator: (val) => val == null || val == "" ? "Required" : null,
             ))
           ],),
-        ],)
+        ],))
     );
   }
 

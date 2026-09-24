@@ -1,3 +1,4 @@
+import 'package:bus_arrival_notification_app/screens/add_alarm_screen.dart';
 import 'package:bus_arrival_notification_app/services/alarm_storage_service.dart';
 import 'package:bus_arrival_notification_app/widgets/alarm_card.dart';
 import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
@@ -48,6 +49,11 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
     });
   }
 
+  Future<void> _editAlarm(BusAlarm alarm, int index) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (context) => AddAlarmScreen(alarmToEdit: alarm,)));
+    await _loadAlarms();
+  }
+
   Future<void> _navigateToAddAlarm() async {
     await Navigator.pushNamed(context, "/add-alarm");
     await _loadAlarms();
@@ -79,6 +85,7 @@ class _AlarmListScreenState extends State<AlarmListScreen> {
               isEditing: _isEditing,
               onToggle: (_) => _toggleAlarm(index),
               onDelete: () => _deleteAlarm(index),
+              onTap: _isEditing ? () => _editAlarm(alarm, index) : null,
             );
           })
     );

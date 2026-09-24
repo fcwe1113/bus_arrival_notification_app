@@ -14,6 +14,7 @@ class BusAlarm {
   final int maxRingsPerThreshold;
   final RepeatPattern repeat;
   final bool liveOnly; // ignore schedule times if true
+  final String message;
   final bool enabled; // indicates alarm enabled (similar to ios alarm ui alarm toggle)
 
   const BusAlarm({ //  constructor
@@ -26,6 +27,7 @@ class BusAlarm {
     this.maxRingsPerThreshold = 10,
     this.repeat = RepeatPattern.none,
     this.liveOnly = false,
+    required this.message,
     this.enabled = true,
   });
 
@@ -38,6 +40,7 @@ class BusAlarm {
     List<ThresholdState>? thresholdStates,
     RepeatPattern? repeat,
     bool? liveOnly,
+    String? message,
     bool? enabled
   }) {
     return BusAlarm(
@@ -49,6 +52,7 @@ class BusAlarm {
         thresholdStates: thresholdStates ?? this.thresholdStates,
         repeat: repeat ?? this.repeat,
         liveOnly: liveOnly ?? this.liveOnly,
+        message: message ?? this.message,
         enabled: enabled ?? this.enabled
     );
   }
@@ -63,6 +67,7 @@ class BusAlarm {
     'thresholdStates': thresholdStates.map((t) => t.toJson()).toList(),
     'repeat': repeat.toJson(),
     'liveOnly': liveOnly,
+    'message': message,
     'enabled': enabled,
   };
 
@@ -76,6 +81,7 @@ class BusAlarm {
     thresholdStates: (json['thresholdStates'] as List).map((t) => ThresholdState.fromJson(t as Map<String, dynamic>)).toList(),
     repeat: RepeatPattern.fromJson(json['repeat'] as Map<String, dynamic>),
     liveOnly: json['liveOnly'] as bool,
+    message: json['message'] as String,
     enabled: json['enabled'] as bool,
   );
 
