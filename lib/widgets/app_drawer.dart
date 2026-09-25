@@ -1,5 +1,5 @@
-import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
-import 'package:bus_arrival_notification_app/transit_bootstrap.dart';
+import 'package:transport_alarm/screens/loading_screen.dart';
+import 'package:transport_alarm/transit_bootstrap.dart';
 import 'package:flutter/material.dart';
 
 /// this is the actual menu object, with each menu entry

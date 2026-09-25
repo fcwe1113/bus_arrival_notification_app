@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
-import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/services/geo_utils.dart';
-import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
-import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
+import 'package:transport_alarm/models/scheduled_departure.dart';
+import 'package:transport_alarm/provider_registry.dart';
+import 'package:transport_alarm/services/geo_utils.dart';
+import 'package:transport_alarm/transit/models/bus_stop.dart';
+import 'package:transport_alarm/transit/models/gtfs_stop.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 

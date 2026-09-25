@@ -3,10 +3,10 @@
 
 import 'dart:ui';
 
-import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
-import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
-import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
-import 'package:bus_arrival_notification_app/transit/refresh_result.dart';
+import 'package:transport_alarm/transit/models/live_eta.dart';
+import 'package:transport_alarm/transit/models/route_colour_scheme.dart';
+import 'package:transport_alarm/transit/progress_callback.dart';
+import 'package:transport_alarm/transit/refresh_result.dart';
 
 import 'models/bus_route.dart';
 

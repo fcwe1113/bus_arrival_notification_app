@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
-import 'package:bus_arrival_notification_app/transit/services/csv_stream_parser.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/transit/progress_callback.dart';
+import 'package:transport_alarm/transit/services/csv_stream_parser.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 

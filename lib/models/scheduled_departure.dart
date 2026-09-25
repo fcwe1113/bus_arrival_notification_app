@@ -1,4 +1,4 @@
-import 'package:bus_arrival_notification_app/provider_registry.dart';
+import 'package:transport_alarm/provider_registry.dart';
 
 class ScheduledDeparture {
   final String routeShortName;

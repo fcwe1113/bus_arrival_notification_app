@@ -1,4 +1,4 @@
-import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
+import 'package:transport_alarm/transit/models/bus_stop.dart';
 
 class EnrichmentResult {
   final List<BusStop> stops;

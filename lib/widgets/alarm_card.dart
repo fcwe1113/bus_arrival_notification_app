@@ -1,6 +1,6 @@
-import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:bus_arrival_notification_app/widgets/route_pill_strip.dart';
+import 'package:transport_alarm/models/bus_alarm.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/widgets/route_pill_strip.dart';
 import 'package:flutter/material.dart';
 
 import '../transit/models/gtfs_stop.dart';

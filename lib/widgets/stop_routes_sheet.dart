@@ -1,8 +1,8 @@
-import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
-import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
-import 'package:bus_arrival_notification_app/transit/models/route_arrival.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/models/scheduled_departure.dart';
+import 'package:transport_alarm/provider_registry.dart';
+import 'package:transport_alarm/transit/models/live_eta.dart';
+import 'package:transport_alarm/transit/models/route_arrival.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 
 import '../transit/models/bus_route.dart';

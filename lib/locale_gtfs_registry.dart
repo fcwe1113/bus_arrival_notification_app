@@ -1,5 +1,5 @@
-import 'package:bus_arrival_notification_app/transit/locale/hk/hk_gtfs_sync_provider.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_sync_service.dart';
+import 'package:transport_alarm/transit/locale/hk/hk_gtfs_sync_provider.dart';
+import 'package:transport_alarm/transit/services/gtfs_sync_service.dart';
 
 class LocaleGtfsRegistry {
   static final Map<String, List<GtfsSyncProvider>> _providers = {

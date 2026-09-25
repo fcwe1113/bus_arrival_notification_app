@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="bus_arrival_notification_app"
+        android:label="Transport Alarm"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

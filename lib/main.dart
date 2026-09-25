@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:bus_arrival_notification_app/screens/add_alarm_screen.dart';
-import 'package:bus_arrival_notification_app/screens/alarm_list_screen.dart';
-import 'package:bus_arrival_notification_app/screens/loading_screen.dart';
-import 'package:bus_arrival_notification_app/screens/map_screen.dart';
-import 'package:bus_arrival_notification_app/screens/setup_screen.dart';
-import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
+import 'package:transport_alarm/screens/add_alarm_screen.dart';
+import 'package:transport_alarm/screens/alarm_list_screen.dart';
+import 'package:transport_alarm/screens/loading_screen.dart';
+import 'package:transport_alarm/screens/map_screen.dart';
+import 'package:transport_alarm/screens/setup_screen.dart';
+import 'package:transport_alarm/transit/services/locale_selection_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +18,7 @@ Future<void> main() async { // dart entry point
   final String apiKey = secrets["MAPS_API_KEY"];
 
   if (defaultTargetPlatform == TargetPlatform.iOS && apiKey.isNotEmpty) {
-    const channel = MethodChannel("com.fcwe1113.future_new_app_name/google_maps");
+    const channel = MethodChannel("com.fcwe1113.transport_alarm/google_maps");
     try {
       await channel.invokeMethod("setApiKey", {"apiKey": apiKey});
     } on PlatformException catch (e) {

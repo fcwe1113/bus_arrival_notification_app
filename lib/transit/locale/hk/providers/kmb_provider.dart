@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:core';
 
-import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/models/live_eta.dart';
-import 'package:bus_arrival_notification_app/transit/models/route_colour_scheme.dart';
-import 'package:bus_arrival_notification_app/transit/refresh_result.dart';
-import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/transit/models/bus_route.dart';
+import 'package:transport_alarm/transit/models/live_eta.dart';
+import 'package:transport_alarm/transit/models/route_colour_scheme.dart';
+import 'package:transport_alarm/transit/refresh_result.dart';
+import 'package:transport_alarm/transit/services/api_caller.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -113,7 +113,7 @@ class KmbProvider extends TransitProvider { // implements means to follow the pr
         items: items,
         forceRefresh: forceRefresh,
         maxAge: const Duration(days: 7),
-        onProgress: (done, total) => onProgress?.call("Linking routes to stops ($done/$total)", total > 0 ? done / total : null)
+        onProgress: (done, total) => onProgress?.call("Fetching KMB stops ($done/$total)", total > 0 ? done / total : null)
     );
 
     for (final entry in batchResult.results.entries) {

@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_sync_service.dart';
+import 'package:transport_alarm/transit/progress_callback.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/transit/services/gtfs_sync_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

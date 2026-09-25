@@ -1,5 +1,5 @@
-import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
-import 'package:bus_arrival_notification_app/transit_bootstrap.dart';
+import 'package:transport_alarm/transit/progress_callback.dart';
+import 'package:transport_alarm/transit_bootstrap.dart';
 import 'package:flutter/material.dart';
 
 class LoadingScreen extends StatefulWidget {

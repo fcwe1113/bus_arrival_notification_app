@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/provider_registry.dart';
+import 'package:transport_alarm/transit/models/bus_route.dart';
+import 'package:transport_alarm/transit/models/gtfs_stop.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
 import 'package:flutter/material.dart';
 
 class RoutePillStrip extends StatefulWidget{

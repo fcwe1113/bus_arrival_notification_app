@@ -1,12 +1,12 @@
-import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
-import 'package:bus_arrival_notification_app/screens/map_screen.dart';
-import 'package:bus_arrival_notification_app/services/alarm_storage_service.dart';
-import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/models/gtfs_stop.dart';
-import 'package:bus_arrival_notification_app/transit/models/repeat_pattern.dart';
-import 'package:bus_arrival_notification_app/transit/models/threshold_state.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
+import 'package:transport_alarm/models/bus_alarm.dart';
+import 'package:transport_alarm/screens/map_screen.dart';
+import 'package:transport_alarm/services/alarm_storage_service.dart';
+import 'package:transport_alarm/transit/models/bus_route.dart';
+import 'package:transport_alarm/transit/models/gtfs_stop.dart';
+import 'package:transport_alarm/transit/models/repeat_pattern.dart';
+import 'package:transport_alarm/transit/models/threshold_state.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 

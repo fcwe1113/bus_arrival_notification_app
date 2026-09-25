@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
-import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:bus_arrival_notification_app/transit/transit_provider.dart';
+import 'package:transport_alarm/transit/models/bus_route.dart';
+import 'package:transport_alarm/transit/models/bus_stop.dart';
+import 'package:transport_alarm/transit/services/api_caller.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/transit/transit_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 

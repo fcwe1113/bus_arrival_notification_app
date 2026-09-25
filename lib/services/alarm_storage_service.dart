@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bus_arrival_notification_app/models/bus_alarm.dart';
+import 'package:transport_alarm/models/bus_alarm.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AlarmStorageService {

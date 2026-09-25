@@ -1,7 +1,7 @@
-import 'package:bus_arrival_notification_app/screens/add_alarm_screen.dart';
-import 'package:bus_arrival_notification_app/services/alarm_storage_service.dart';
-import 'package:bus_arrival_notification_app/widgets/alarm_card.dart';
-import 'package:bus_arrival_notification_app/widgets/app_shell.dart';
+import 'package:transport_alarm/screens/add_alarm_screen.dart';
+import 'package:transport_alarm/services/alarm_storage_service.dart';
+import 'package:transport_alarm/widgets/alarm_card.dart';
+import 'package:transport_alarm/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 
 import '../models/bus_alarm.dart';

@@ -1,6 +1,6 @@
 // bus route data struct definition file
 
-import 'package:bus_arrival_notification_app/transit/models/bus_stop.dart';
+import 'package:transport_alarm/transit/models/bus_stop.dart';
 
 class BusRoute {
   final String id;

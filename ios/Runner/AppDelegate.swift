@@ -12,7 +12,7 @@ import GoogleMaps
 
         if let registrar = self.registrar(forPlugin: "GoogleMapsApiKeyHandler") {
             let mapsChannel = FlutterMethodChannel(
-                name: "com.fcwe1113.future_new_app_name/google_maps",
+                name: "com.fcwe1113.transport_alarm/google_maps",
                 binaryMessenger: registrar.messenger()
             )
 

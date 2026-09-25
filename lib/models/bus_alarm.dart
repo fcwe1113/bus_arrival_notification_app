@@ -1,4 +1,4 @@
-import 'package:bus_arrival_notification_app/transit/models/threshold_state.dart';
+import 'package:transport_alarm/transit/models/threshold_state.dart';
 import 'package:flutter/material.dart';
 
 import '../transit/models/repeat_pattern.dart';

@@ -1,5 +1,5 @@
-import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
+import 'package:transport_alarm/provider_registry.dart';
+import 'package:transport_alarm/transit/services/locale_selection_service.dart';
 import 'package:flutter/material.dart';
 
 class SetupScreen extends StatefulWidget {

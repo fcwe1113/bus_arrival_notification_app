@@ -1,8 +1,8 @@
-import 'package:bus_arrival_notification_app/provider_registry.dart';
-import 'package:bus_arrival_notification_app/locale_gtfs_registry.dart';
-import 'package:bus_arrival_notification_app/transit/progress_callback.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
-import 'package:bus_arrival_notification_app/transit/services/locale_selection_service.dart';
+import 'package:transport_alarm/provider_registry.dart';
+import 'package:transport_alarm/locale_gtfs_registry.dart';
+import 'package:transport_alarm/transit/progress_callback.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/transit/services/locale_selection_service.dart';
 
 /// runs the data refresh routine for a given provider
 Future<List<String>> initializeTransitData({ProgressCallback? onProgress, bool forceRefresh = false}) async {

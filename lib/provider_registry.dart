@@ -1,8 +1,8 @@
-import 'package:bus_arrival_notification_app/transit/locale/hk/providers/ctb_provider.dart';
-import 'package:bus_arrival_notification_app/transit/locale/hk/providers/kmb_provider.dart';
-import 'package:bus_arrival_notification_app/transit/models/locale_config.dart';
-import 'package:bus_arrival_notification_app/transit/transit_provider.dart';
-import 'package:bus_arrival_notification_app/transit/services/api_caller.dart';
+import 'package:transport_alarm/transit/locale/hk/providers/ctb_provider.dart';
+import 'package:transport_alarm/transit/locale/hk/providers/kmb_provider.dart';
+import 'package:transport_alarm/transit/models/locale_config.dart';
+import 'package:transport_alarm/transit/transit_provider.dart';
+import 'package:transport_alarm/transit/services/api_caller.dart';
 
 final ApiCaller _apiCaller = ApiCaller();
 

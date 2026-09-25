@@ -1,7 +1,7 @@
-import 'package:bus_arrival_notification_app/models/scheduled_departure.dart';
-import 'package:bus_arrival_notification_app/transit/models/bus_route.dart';
-import 'package:bus_arrival_notification_app/transit/models/route_arrival.dart';
-import 'package:bus_arrival_notification_app/transit/services/gtfs_database.dart';
+import 'package:transport_alarm/models/scheduled_departure.dart';
+import 'package:transport_alarm/transit/models/bus_route.dart';
+import 'package:transport_alarm/transit/models/route_arrival.dart';
+import 'package:transport_alarm/transit/services/gtfs_database.dart';
 
 import '../../provider_registry.dart';
 import '../models/gtfs_stop.dart';
