@@ -28,7 +28,7 @@ import GoogleMaps
             })
         }
 
-        return result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
 //    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
