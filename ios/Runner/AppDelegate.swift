@@ -28,6 +28,8 @@ import GoogleMaps
                 }
             })
         }
+
+        return result
     }
 
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
