@@ -59,7 +59,7 @@ class ApiCaller {
     return data;
   }
 
-  Future<BatchCallResult<K, T>> callBatch<K, T>({
+  Future<BatchCallResult<K, T>> callBatch<K, T>({ // possible bug here in api reattempt code (from ios test run)
     required String providerCode,
     required List<BatchCallItem<K, T>> items,
     int batchSize = 20,
