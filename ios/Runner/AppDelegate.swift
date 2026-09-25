@@ -32,7 +32,7 @@ import GoogleMaps
         return result
     }
 
-    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    }
+//    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+//        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+//    }
 }
