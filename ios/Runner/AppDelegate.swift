@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import GoogleMaps
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -21,7 +22,7 @@ import UIKit
                 GMSServices.provideAPIKey(apiKey)
                 result(true)
             } else {
-                result(FlutterNotImplemented)
+                result(FlutterMethodNotImplemented)
             }
         })
 
