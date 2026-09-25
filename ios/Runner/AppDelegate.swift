@@ -9,12 +9,11 @@ import GoogleMaps
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         GeneratedPluginRegistrant.register(with: self)
-        let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
-        if let controller = window?.rootViewController as? FlutterViewController {
+        if let registrar = self.registrar(forPlugin: "GoogleMapsApiKeyHandler") {
             let mapsChannel = FlutterMethodChannel(
                 name: "com.fcwe1113.future_new_app_name/google_maps",
-                binaryMessenger: controller.binaryMessenger
+                binaryMessenger: registrar.messenger()
             )
 
             mapsChannel.setMethodCallHandler({ (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
@@ -29,7 +28,7 @@ import GoogleMaps
             })
         }
 
-        return result
+        return result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
 //    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
