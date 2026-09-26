@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:transport_alarm/screens/add_alarm_screen.dart';
 import 'package:transport_alarm/screens/alarm_list_screen.dart';
 import 'package:transport_alarm/screens/loading_screen.dart';
@@ -9,6 +12,12 @@ import 'package:transport_alarm/transit/services/locale_selection_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+@pragma("vm:entry-point")
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print("Background message received: ${message.messageId}");
+  print("Data: ${message.data}");
+}
 
 Future<void> main() async { // dart entry point
 
@@ -25,6 +34,39 @@ Future<void> main() async { // dart entry point
       debugPrint("Failed to pass Google Maps API key to iOS: ${e.message}");
     }
   }
+
+  await Firebase.initializeApp();
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+  print("User permission status: ${settings.authorizationStatus}");
+  String? token = await messaging.getToken();
+  print("FCM DEVICE TOKEN: ${token}");
+
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    print("FCM Token Refreshed: ${newToken}"); // todo update token at server
+  });
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  Future<void> initLocalNotifications() async {
+    const androidSettings = AndroidInitializationSettings("@mipmap/ic_launcher");
+    const initSettings = InitializationSettings(android: androidSettings);
+    await flutterLocalNotificationsPlugin.initialize(settings: initSettings);
+  }
+
+  await initLocalNotifications();
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    print("Foreground message received: ${message.messageId}");
+    const androidDetails = AndroidNotificationDetails("alarm_test_channel", "Alarm Test", importance: Importance.high, priority: Priority.high);
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    await flutterLocalNotificationsPlugin.show(id: message.hashCode, title: message.notification?.title ?? "Ping received", body: message.notification?.body ?? "", notificationDetails: notificationDetails);
+
+  });
 
   final selectionService = LocaleSelectionService();
   final setupDone = await selectionService.hasCompletedSetup(); // check if user did setup before

@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:http/http.dart' as http;
 import 'package:transport_alarm/transit/models/threshold_state.dart';
 import 'package:flutter/material.dart';
 
@@ -41,7 +45,7 @@ class BusAlarm {
     RepeatPattern? repeat,
     bool? liveOnly,
     String? message,
-    bool? enabled
+    bool? enabled,
   }) {
     return BusAlarm(
         id: id,
@@ -53,7 +57,7 @@ class BusAlarm {
         repeat: repeat ?? this.repeat,
         liveOnly: liveOnly ?? this.liveOnly,
         message: message ?? this.message,
-        enabled: enabled ?? this.enabled
+        enabled: enabled ?? this.enabled,
     );
   }
 
@@ -87,14 +91,28 @@ class BusAlarm {
 
   static TimeOfDay _minutesToTimeOfDay (int totalMinutes) =>
     TimeOfDay(hour: totalMinutes ~/ 60, minute: totalMinutes % 60);
+
+  int _toMinutes (TimeOfDay t) => t.hour * 60 + t.minute;
+
+  bool isWithinWindow(TimeOfDay t) {
+    final start = _toMinutes(windowStart);
+    final end = _toMinutes(windowEnd);
+    final time = _toMinutes(t);
+
+    if (start <= end) {
+      return time >= start && time <= end;
+    } else {
+      return time >= start || time <= end;
+    }
+  }
 }
 
 // IOS alarm workflow
 // 0. on alarm register send the next alarm duration start to server
 // 1. server pings on alarm duration start
-// 2. phone gets updated alarm ring estimate, pings server on next ping, either for estimate update (estimate >5 mins) or actual alarm ring(estimate <5 mins)
+// 2. phone gets updated alarm ring estimate, pings server on next when to ping next, either for estimate update (estimate >5 mins) or actual alarm ring(estimate <5 mins)
 // 3. server pings on alarm ring
-// 4. phone rings and set server ping in 1 min, if user acknowledge the send delete to remove repeat ring, user can define max rin tries (default 10)
+// 4. phone rings and set server ping in 1 min, if user acknowledge the send delete to remove repeat ring, user can define max run tries (default 10)
 // 5. any subsequent alarm rings would be set by phone calculating the next server ping time
 // note: if server does not receive an ACK from phone on ping, it will retry in 1 min
 // assuming that step 2 runs one estimate update in addition to final check before alarm, user acknowledges alarm on first ring, and all api packets arrive successfully

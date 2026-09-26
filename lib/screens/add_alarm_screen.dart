@@ -231,7 +231,7 @@ class _AddAlarmScreenState extends State<AddAlarmScreen> {
         ),
         liveOnly: _liveOnly,
         message: _messageController.text,
-        enabled: true
+        enabled: true,
     );
     if (widget.alarmToEdit != null) {
       await alarmStorage.updateAlarm(newAlarm);
